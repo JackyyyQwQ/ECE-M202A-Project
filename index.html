@@ -160,10 +160,20 @@
           ten-second generated soundscapes. The team reports 2,045 recordings;
           archive contents and original split manifests still need local verification.</li>
         <li><a href="https://github.com/UCLA-ECEM202A/software/tree/83a3ac6ccf585b2b647d3d6c654b616de8c29cb8/zephyr">Course Zephyr toolchain and examples</a>.</li>
-        <li><a href="https://doi.org/10.1016/j.procs.2025.07.180">Compression at the Edge for Energy- and Bandwidth-Efficient Industrial Audio Analysis</a> (2025).</li>
-        <li><a href="https://arxiv.org/abs/2601.14942">Communication-Efficient Multi-Modal Edge Inference via Uncertainty-Aware Distributed Learning</a> (2026).</li>
-        <li><a href="https://arxiv.org/abs/2609.31428">Wireless Evidence Acquisition for Multimodal Inference Constrained by Temporal Windows</a> (2026).</li>
+        <li><a href="https://doi.org/10.1016/j.procs.2025.07.180">Compression at the Edge for Energy- and Bandwidth-Efficient Industrial Audio Analysis</a> (2025).
+          Evaluate compact audio through downstream quality and communication cost.</li>
+        <li><a href="https://arxiv.org/abs/2601.14942">Communication-Efficient Multi-Modal Edge Inference via Uncertainty-Aware Distributed Learning</a> (2026, preprint).
+          Use uncertainty-guided feedback as a retrieval baseline.</li>
+        <li><a href="https://arxiv.org/abs/2609.31428">Wireless Evidence Acquisition for Multimodal Inference Constrained by Temporal Windows</a> (2026, preprint).
+          Balance evidence value against acquisition time and cost.</li>
+        <li><a href="https://arxiv.org/abs/2406.04212">Sound Event Bounding Boxes</a> (Interspeech 2024).
+          Separate event confidence from onset/offset estimates; account for lookahead online.</li>
+        <li><a href="https://arxiv.org/abs/1702.06286">Convolutional Recurrent Neural Networks for Polyphonic Sound Event Detection</a> (2017).
+          Provides the CNN/recurrent backbone idea; our policy comparisons keep it fixed.</li>
+        <li><a href="https://proceedings.mlr.press/v70/guo17a.html">On Calibration of Modern Neural Networks</a> (ICML 2017).
+          Check confidence reliability before using it to request more audio.</li>
       </ul>
+      <p><a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/references.md">Paper summaries and how we plan to build on each idea</a>.</p>
       <p class="small">Our proposed focus is temporal audio selection from expiring
         MCU history for on-time boundary refinement. Its benefit remains to be evaluated.</p>
     </section>

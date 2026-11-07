@@ -132,11 +132,17 @@ Open `http://127.0.0.1:8000/`; stop with Ctrl-C. Update `index.html` alongside
 new evidence. GitHub Pages serves the root website when configured to publish
 this branch. No checkpoint PDF is included yet; add its direct link when ready.
 
-## Starting points
+## References
+
+See [related work and proposed adaptations](docs/references.md) for summaries,
+differences, and experiments for each paper.
 
 - [Compression at the Edge for Energy- and Bandwidth-Efficient Industrial Audio Analysis](https://doi.org/10.1016/j.procs.2025.07.180)
 - [Communication-Efficient Multi-Modal Edge Inference via Uncertainty-Aware Distributed Learning](https://arxiv.org/abs/2601.14942)
 - [Wireless Evidence Acquisition for Multimodal Inference Constrained by Temporal Windows](https://arxiv.org/abs/2609.31428)
+- [Sound Event Bounding Boxes](https://arxiv.org/abs/2406.04212)
+- [Convolutional Recurrent Neural Networks for Polyphonic Sound Event Detection](https://arxiv.org/abs/1702.06286)
+- [On Calibration of Modern Neural Networks](https://proceedings.mlr.press/v70/guo17a.html)
 
 We build on feature compression and selective evidence acquisition, focusing on
 temporal audio segments, finite MCU history and on-time boundary estimates.
