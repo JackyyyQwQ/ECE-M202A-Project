@@ -43,6 +43,7 @@
       Junchi Chen and Wei Zhang</p>
     <p>
       <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project">GitHub repository</a> ·
+      <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/proposal.md">Proposal</a> ·
       <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/architecture.md">Architecture</a> ·
       <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/feasibility.md">Full feasibility report</a>
     </p>
@@ -61,11 +62,11 @@
       <p>We are building a sound-event detection system shared between an Arduino
         Nano 33 BLE Sense running Zephyr and a laptop. The MCU sends compact audio
         features instead of continuously transmitting raw audio. The laptop detects
-        events, estimates their start and end times, and can request a short original
-        audio segment to refine a boundary.</p>
-      <p><strong>Research question:</strong> how can the receiver select useful audio
-        segments from a limited MCU buffer while meeting communication budgets and
-        reporting deadlines?</p>
+        events and estimates their start and end times. We will compare reporting
+        immediately, waiting for future features, and requesting original audio.</p>
+      <p><strong>Research question:</strong> when should the receiver report a causal
+        prediction, wait for bounded future context, or retrieve expiring historical
+        audio to improve event boundaries within communication budgets and deadlines?</p>
     </section>
 
     <section id="system">
@@ -73,15 +74,23 @@
       <ul>
         <li><strong>MCU:</strong> capture or replay audio, retain recent PCM samples,
           run a small CNN encoder, and return requested segments. Deployment is planned.</li>
-        <li><strong>Laptop:</strong> use a causal GRU to detect events and an optional
-          audio/context head to refine boundaries. Offline model code is implemented.</li>
-        <li><strong>Controller:</strong> choose whether and how much audio to request,
-          considering expected benefit, delay, bytes, buffer expiry and the reporting
-          deadline. This is planned.</li>
+        <li><strong>Laptop:</strong> a causal GRU gives the initial prediction.
+          Offline causal and audio/context refinement code exists; the bounded-window
+          BiGRU path is planned.</li>
+        <li><strong>Controller (planned):</strong> choose REPORT, LOOKAHEAD or REFINE
+          using expected benefit, delay, bytes, buffer expiry and reporting time.
+          We will compare the paths before building the selector.</li>
       </ul>
       <p>The current offline pipeline uses 16 kHz mono audio, 500 ms input windows,
         a 50 ms hop, and ten activity labels for the latest 50 ms. The baseline
         encoder produces 32D features; the existing refiner uses 200 ms of audio.</p>
+      <ul>
+        <li><strong>REPORT:</strong> submit the current causal GRU result.</li>
+        <li><strong>LOOKAHEAD:</strong> wait a bounded horizon, then use a BiGRU on
+          features actually received to predict the original target interval.</li>
+        <li><strong>REFINE:</strong> retrieve a PCM segment and use the audio/context
+          refiner. The refiner remains part of the proposal.</li>
+      </ul>
       <div class="table-scroll">
         <table>
           <thead><tr><th scope="col">Environment</th><th scope="col">Current status</th></tr></thead>
@@ -135,20 +144,24 @@
     <section id="plan">
       <h2>Next steps and evaluation</h2>
       <ol>
-        <li>Recover preprocessing, training/evaluation runners, original split manifests
-          and checkpoints; compare audio request lengths against context-only.</li>
-        <li>Implement finite PCM history and verify valid, overwritten, future and
-          wraparound requests in Zephyr.</li>
-        <li>Connect a Python receiver, then integrate the encoder, fixed audio retrieval
-          and deadline-aware selection.</li>
+        <li>Recover the original runners, manifests and checkpoints; reproduce and
+          improve the causal baseline.</li>
+        <li>Compare causal GRU, bounded-window BiGRU, context-only correction and
+          PCM refinement with the same encoder and controlled model capacity.</li>
+        <li>Implement finite PCM history and USB retrieval; verify overwritten,
+          future and wraparound requests, then measure costs on the Nano.</li>
+        <li>Measure whether different paths help different cases, then test a simple
+          resource-aware selector. If one fixed path dominates, simplify and report it.</li>
       </ol>
-      <p>Compare feature/context-only, fixed refinement, uncertainty-only and
-        deadline-aware policies under comparable byte budgets and controlled link
-        conditions. Measure timely event quality, boundary error, bytes, latency,
-        deadline misses and MCU resources.</p>
+      <p>Compare at matched reporting budgets and explicit byte budgets under
+        controlled link conditions. Count waiting, transfer, queueing and computation.
+        Measure timely event quality, boundary error, bytes, latency, deadline misses
+        and MCU resources. An offline oracle is analysis only; full-recording BiGRU
+        predictions are not online results.</p>
       <p><strong>Minimum target:</strong> a working Nano/laptop USB prototype.
         Paced recording replay on the physical MCU is the fallback for microphone
-        integration. The main research risk is insufficient benefit from extra audio.</p>
+        integration. The main research risk is insufficient complementary benefit
+        from future context and extra audio.</p>
       <p class="small">Checkpoint 3: November 12, 2026, 5:14 p.m., Los Angeles time.
         Initial slides are due November 10 at 4 p.m. The checkpoint PDF is not yet available.</p>
     </section>
@@ -172,10 +185,15 @@
           Provides the CNN/recurrent backbone idea; our policy comparisons keep it fixed.</li>
         <li><a href="https://proceedings.mlr.press/v70/guo17a.html">On Calibration of Modern Neural Networks</a> (ICML 2017).
           Check confidence reliability before using it to request more audio.</li>
+        <li><a href="https://arxiv.org/abs/2008.06402">SPINN: Synergistic Progressive Inference of Neural Networks over Device and Cloud</a> (MobiCom 2020).
+          Adaptive inference scheduling is a starting point, not our novelty claim.</li>
+        <li><a href="https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0000101.pdf">A Sequential Audio Spectrogram Transformer for Real-Time Sound Event Detection</a> (EUSIPCO 2024).
+          Future context must be evaluated together with its waiting cost.</li>
       </ul>
       <p><a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/references.md">Paper summaries and how we plan to build on each idea</a>.</p>
-      <p class="small">Our proposed focus is temporal audio selection from expiring
-        MCU history for on-time boundary refinement. Its benefit remains to be evaluated.</p>
+      <p class="small">Our proposed focus is choosing future features or expiring historical
+        audio for timely boundaries. Its benefit remains to be evaluated; we do not
+        claim that adaptive inference or lookahead is new.</p>
     </section>
   </main>
   <footer class="small">Junchi Chen and Wei Zhang · Updated November 7, 2026</footer>

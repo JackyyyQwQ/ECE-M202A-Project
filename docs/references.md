@@ -96,15 +96,55 @@ and Kilian Q. Weinberger (2017), ICML, PMLR 70, 1321–1330.
 - **Experiment:** compare request yield before/after calibration; fit gates and
   calibration on development data only, never on the held-out test set.
 
+### 7. Adaptive device/cloud inference
+
+**SPINN: Synergistic Progressive Inference of Neural Networks over Device and
+Cloud** — Stefanos Laskaridis et al. (2020), MobiCom.
+[Paper](https://arxiv.org/abs/2008.06402)
+
+- **Idea:** combine progressive inference and device/cloud splitting, adapting
+  execution to runtime conditions and latency/accuracy requirements.
+- **Build on:** profile alternative inference paths before choosing a simple
+  runtime policy. Adaptive path selection itself is not our novelty.
+- **Difference:** we compare acquiring future temporal context with retrieving
+  expiring historical PCM for event boundaries, rather than only choosing where
+  to execute a network or where to exit.
+- **Experiment:** compare the selector against fixed affordable paths across link
+  conditions, including the cost of the selection decision.
+
+### 8. Future context in streaming sound-event detection
+
+**A Sequential Audio Spectrogram Transformer for Real-Time Sound Event Detection**
+— Takezo Ohta, Yoshiaki Bando, Keisuke Imoto and Masaki Onishi (2024), EUSIPCO.
+[Paper](https://eurasip.org/Proceedings/Eusipco/Eusipco2024/pdfs/0000101.pdf)
+
+- **Idea:** sequential chunk processing with memory tokens supports streaming SED;
+  experiments examine the trade-off between future context and latency.
+- **Build on:** explicitly bound and charge future-context waiting, evaluating
+  the original target interval after its permitted evidence arrives.
+- **Difference:** our proposed temporal head is a bounded-window BiGRU, and we
+  compare waiting against additional raw-audio acquisition. Neither lookahead nor
+  its accuracy/latency trade-off is a new contribution by itself.
+- **Experiment:** sweep finite horizons and compare with PCM refinement at similar
+  reporting times; control model capacity and prohibit full-recording future access.
+
 ## Proposed synthesis
 
-For candidate segments, first check whether samples can be acquired before
-overwrite and whether retrieval/refinement can finish on time. Then compare
-expected improvement over **context-only** against acquisition cost, using only
-pre-request information. Ground truth may supervise offline value estimation but
-must not select online request locations. Compare context-only, fixed retrieval,
-uncertainty-only and deadline-aware policies on the same recordings/link traces.
+First improve the causal detector. Then compare REPORT (causal GRU), LOOKAHEAD
+(bounded-window BiGRU), context-only correction and REFINE (requested PCM).
+Use the same encoder initially, identical splits, matched reporting budgets and
+explicit byte accounting. Determine whether different paths help different cases;
+an offline oracle can measure selection headroom but cannot act as the online policy.
 
-Our current audio refiner has not beaten context-only overall. First establish
-whether 200/400 ms evidence adds value; only then evaluate adaptive selection.
-See [architecture](architecture.md) and [feasibility evidence](feasibility.md).
+Only then test a simple controller using pre-action uncertainty, resource estimates,
+buffer availability and remaining reporting time. Ground truth cannot choose online
+actions; post-retrieval support is not a free selection signal. Compare against
+fixed paths, uncertainty-only and deadline-aware selection under the same traces.
+
+Our proposed contribution is an empirical study of **waiting for future features
+versus retrieving expiring historical audio** for timely event boundaries on an
+MCU/laptop system. This combination is a research hypothesis, not a verified claim
+of being first. Current audio refinement has not beaten context-only overall; if
+one fixed path dominates, report that result and simplify the system.
+See [proposal](proposal.md), [architecture](architecture.md) and
+[feasibility evidence](feasibility.md).

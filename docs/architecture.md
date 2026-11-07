@@ -1,69 +1,80 @@
 # Architecture
 
-P13 · Junchi Chen & Wei Zhang · Updated November 7, 2026
+P13 · Junchi Chen & Wei Zhang · Revised November 7, 2026
 
-**Goal:** improve sound-event onset/offset estimates through useful, timely audio
-requests under a finite MCU buffer and limited communication budget.
+**Goal:** compare timely audio-inference paths, then determine whether adaptive
+selection improves on fixed choices. Full design: [proposal](proposal.md).
 
 ## Intended runtime
 
 ```text
-Device: Nano + Zephyr                 Laptop: Python
-microphone / paced replay
-  -> PCM ring buffer
-  -> frontend + CNN encoder --features--> causal GRU -> event boundaries
-          |                                            |
-          |<----------- request(start, count) ----- request controller
-          +-- buffered PCM / unavailable ----------> refiner -> report
+Nano + Zephyr                           Laptop + Python
+mic / paced replay -> PCM history
+                  -> CNN --features--> causal GRU -> initial prediction
+                                                  |
+                                              controller
+                          +-----------------------+--------------------+
+                          |                       |                    |
+                       REPORT                 LOOKAHEAD              REFINE
+                          |                wait for features     request PCM
+                          |                bounded-window BiGRU      |
+                          |                       |             audio + context
+                          |                       |                refiner
+                          +-----------------------+--------------------+
+                                                  |
+                                               report
 ```
 
-**Device responsibilities:** continuously acquire audio, retain bounded history,
-emit timestamped features, and copy requested samples before they are overwritten.
-**Laptop responsibilities:** detect events, estimate request value, select segment
-location/length, refine boundaries, and submit a result on time. The refiner is
-part of the laptop pipeline. The offline training class currently includes both
-the encoder and GRU; they are not yet separate deployed processes.
+The MCU continuously retains bounded PCM history, emits timestamped compact
+features and returns requested segments before overwrite. The laptop maintains
+causal state and chooses one action per candidate initially; repeated or combined
+LOOKAHEAD/REFINE actions are outside the first version.
 
-## Three modes
+## Actions and training
 
-| Mode | Device side | Laptop side | Purpose |
+- **REPORT:** submit the causal result without extra evidence.
+- **LOOKAHEAD:** wait a declared horizon, then use a BiGRU over a bounded feature
+  window to predict the original target interval. Later frames must actually
+  arrive; full-clip backward context is forbidden for online evaluation.
+- **REFINE:** fetch a historical PCM interval and correct the initial boundary.
+  Post-fetch support scores are not free pre-request selection signals.
+
+Train models offline; deploy only the compact frontend/CNN to the MCU. Improve
+and reproduce the causal baseline first. Initially freeze the same encoder for
+path comparisons; shared/jointly fine-tuned heads are a later option, not implemented.
+
+## Execution and timing
+
+| Mode | Device | Laptop | Purpose |
 |---|---|---|---|
-| Offline | Python encoder, recorded WAV | Python detector/refiner | Model and audio-value experiments |
-| Zephyr simulation (planned) | native_sim, paced replay | Python receiver | Buffer, protocol and integration checks |
-| Hardware (planned) | Nano + Zephyr, mic/replay | Same receiver, USB | Actual runtime, memory and transport measurements |
+| Offline | Python encoder/WAV | Python paths | Compare quality and evidence value |
+| Simulation (planned) | Zephyr native_sim/replay | Python receiver | Buffer/protocol integration |
+| Hardware (planned) | Nano/Zephyr mic or replay | Same receiver/USB | Measure actual resource costs |
 
-Docker supplies the Linux compiler and native simulator. It does not run on the
-Nano. Native simulator timing is not a Cortex-M performance measurement.
+Docker supplies build tools; it does not run on the Nano. Native_sim does not
+measure Cortex-M execution time, radio performance or energy.
 
-## Data and timing
+Current input: 16 kHz mono PCM16; 500 ms/8,000-sample windows; 50 ms/800-sample
+hop; ten labels for the latest 50 ms. First output: 0.5 s, first 450 ms unscored.
+Encoder: 32D (128D also tested). Existing refiner: exactly 200 ms, +/-100 ms correction.
+Future horizons and PCM lengths remain experiment choices.
 
-16 kHz mono PCM16, float32 when loaded for training. Model input: 500 ms / 8,000
-samples; hop: 50 ms / 800 samples; ten activity labels for the latest 50 ms.
-First output is at 0.5 s; the first 450 ms is unscored. Current encoder features
-are 32D (128D was also tested); the refiner supports exactly 200 ms of audio.
+Planned messages: FEATURE(sequence, sample interval, values), AUDIO_REQUEST(id,
+start_sample, count), AUDIO_RESPONSE(id, status, PCM). Use half-open sample
+intervals; distinguish available, overwritten and not-yet-recorded samples.
+Define deadline anchors and clock mapping before evaluation. Waiting, feature/PCM
+transfer, queueing and inference all consume time. Buffer extraction expiry is
+separate from reporting deadline; waiting also reduces remaining audio history.
 
-Planned messages: `FEATURE(sequence, start_sample, end_sample, values)`,
-`AUDIO_REQUEST(id, start_sample, sample_count)`, and `AUDIO_RESPONSE(id, status,
-samples)`. Status must distinguish available, overwritten, and not-yet-recorded
-audio. Audio intervals are half-open. Transport and serialization remain undecided.
+## Evidence and next steps
 
-The controller must use only information available before requesting. Waiting for
-future samples, queueing, transfer and refinement all consume reporting time.
-Buffer extraction expiry and report deadlines are separate constraints. The
-deadline anchor and clock alignment must be specified before timing experiments;
-ground-truth timestamps are for evaluation only.
+Present: offline causal CNN/GRU, refiner/context-only, and synthetic correctness
+checks. Audio refinement has not beaten context-only overall. BiGRU, project
+firmware, receiver and controller are unimplemented. See [feasibility](feasibility.md).
 
-## Status and next steps
-
-**Present:** offline loaders, CNN/GRU and refiner; preliminary results in
-[feasibility.md](feasibility.md). Audio refinement has not beaten context-only
-overall. Synthetic loader, causality and numerical checks are available; see
-[baseline diagnosis](baseline_diagnosis.md). No project firmware, transport or
-controller is implemented here.
-
-**Next:** recover original runners/data/checkpoints; implement and check bounded
-PCM history; connect a Python request client; integrate encoder, fixed retrieval,
-then adaptive selection. Compare feature/context-only, fixed, uncertainty-only
-and deadline-aware policies using timely event quality, boundary error, bytes,
-latency, misses and measured MCU resources. Minimum target: Nano + laptop over
-USB; paced replay is the fallback for microphone integration.
+First compare causal, bounded BiGRU, context-only and PCM-refined results under
+matched time/byte budgets and capacity controls. Use offline oracle selection only
+as headroom analysis. Then test a simple controller using pre-action information;
+retain a fixed path if it dominates. Measure timely event quality, boundary error,
+bytes, misses and MCU costs. Minimum hardware target is Nano + laptop over USB,
+with paced replay as microphone fallback.

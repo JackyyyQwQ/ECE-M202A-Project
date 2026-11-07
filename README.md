@@ -5,18 +5,20 @@
 Junchi Chen · Wei Zhang
 
 [Project website](https://jackyyyqwq.github.io/ECE-M202A-Project/) ·
-[Architecture](docs/architecture.md) · [Feasibility evidence](docs/feasibility.md)
+[Proposal](docs/proposal.md) · [Architecture](docs/architecture.md) ·
+[Feasibility evidence](docs/feasibility.md)
 
 ## What we are building
 
 A Nano 33 BLE Sense running Zephyr sends compact learned audio features to a
 laptop. The laptop detects sound events and estimates their onset/offset times.
-When extra evidence may help, it requests a short original-audio segment from
-the MCU's finite history buffer and refines the estimate.
+After a causal prediction, the proposed receiver can report immediately, wait
+for bounded future features and run a BiGRU, or request buffered PCM for refinement.
+We will compare these paths before designing the action selector.
 
-**Research question:** how should a receiver choose useful audio segments before
-they are overwritten, while staying within a communication budget and reporting
-deadline? The contribution is the request policy and its systems evaluation.
+**Research question:** when is it worth waiting for future features versus
+retrieving expiring historical audio, under reporting deadlines and communication
+budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvement.
 
 ## Current status
 
@@ -26,7 +28,7 @@ deadline? The contribution is the request policy and its systems evaluation.
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Online laptop receiver and deadline-aware controller | Planned |
+| Bounded-lookahead BiGRU, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
 for the baseline. Across 117 eligible matched boundaries, MAE was **380.2 ms**
@@ -77,8 +79,8 @@ python -m unittest discover -s tests -p 'test_baseline.py' -v
 ```
 
 These check data alignment, causality and numerical behavior, not detection
-accuracy. See [baseline diagnosis](docs/baseline_diagnosis.md) for confirmed
-findings and what still requires the original training artifacts.
+accuracy. Evaluating detection quality still requires the original training
+artifacts and real audio.
 
 See [data setup](data/README.md) for the local WAV, annotation, split and class
 files that must be supplied. Once they are present:
@@ -116,17 +118,24 @@ does not measure Nano processor speed, BLE performance, or energy.
 
 ## Next work and evaluation
 
-- Recover data preparation, runners, split manifests and trained checkpoints.
-- Implement finite PCM history and sample-index requests; check valid,
-  overwritten, future and wraparound cases before using a model.
-- Connect a Python request client, then integrate encoder, fixed retrieval and
-  adaptive selection. Evaluate whether longer segments add value over context-only.
+1. Recover artifacts and reproduce/improve the causal CNN + GRU baseline.
+2. Compare causal GRU, bounded-lookahead BiGRU, context-only correction and
+   PCM refinement with a fixed encoder, matched reporting budgets and explicit
+   byte costs. Separate capacity effects from future-context effects.
+3. Implement finite PCM history and sample-index requests; connect the receiver.
+4. Measure selection headroom, then test a simple REPORT / LOOKAHEAD / REFINE
+   controller. The first version chooses one action per candidate. If one fixed
+   path dominates, simplify and report that result.
 
-Compare feature/context-only, fixed refinement, uncertainty-only and deadline-aware
-policies under comparable byte budgets and controlled link conditions. Report
-timely event quality, boundary error, transmitted bytes, latency, deadline misses
-and MCU memory/runtime. Define the reporting-deadline anchor before experiments.
-Minimum target: a Nano/laptop USB prototype; paced replay is the microphone fallback.
+The controller only sees initial predictions and currently available resource
+information. Full-clip BiGRU results and post-hoc best-path choices are offline
+references, not deployable policies. Include waiting, transport, queueing and
+inference in latency. Define deadline anchors and clock mapping before experiments.
+
+Measure timely event quality, boundary error, false/missed events, bytes, latency,
+deadline misses and MCU resources. Stress-test link conditions and buffer lifetime.
+Minimum target: Nano/laptop USB prototype; paced replay is the microphone fallback.
+See the [revised proposal](docs/proposal.md) for scope, controls and responsibilities.
 
 ## Development and website
 
