@@ -105,8 +105,9 @@ See [saved smoke evidence](../results/pretrained_smoke.json).
 
 At the untuned defaults, predictions were alarm [0, 2.368), speech [2.432, 4.032)
 and speech [4.800, 6.400) seconds. These are predictions, not verified correct events.
-**Accuracy/F1 and boundary error were not evaluated.** No labeled project audio or
-original split manifests are available locally yet.
+**This smoke run did not evaluate accuracy/F1 or boundary error.** A subsequent
+[new 64-recording labeled pilot](pretrained_evaluation.md) measured frame micro F1
+39.72%. The original custom-model split manifests are still missing.
 
 ## Limits and next experiment
 
@@ -116,7 +117,6 @@ is available 30 ms after an event: input collection and lookahead are separate c
 Our existing custom 32D features cannot feed this pretrained GRU directly. The
 official CNN has not been fitted to the Nano or exported to Zephyr.
 
-Next, evaluate labeled project recordings with explicit class mapping and an
-audit for overlap with pretraining data. Then test bounded context at a fixed target
-time. Test timing, normalization and postprocessing together before claiming online
+The labeled pilot is documented separately; next audit its failure classes and
+possible pretraining-data overlap. Then test bounded context at a fixed target time. Test timing, normalization and postprocessing together before claiming online
 causality; do not obtain a causal model merely by removing the backward GRU.

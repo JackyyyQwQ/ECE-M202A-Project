@@ -29,3 +29,8 @@ threshold boundaries. It requires no checkpoints or downloads. Run all checks wi
 ```bash
 python -m unittest discover -s tests -p 'test_*.py' -v
 ```
+
+
+`test_evaluate_pretrained.py` checks the original 191-target time grid, half-open
+label overlap, one-sample archive duration rounding, false/missed frame accounting,
+and one-to-one event matching without duplicate or wrong-class credit.

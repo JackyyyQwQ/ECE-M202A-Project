@@ -47,3 +47,13 @@ For old scripts, update imports to `data.audio_dataset` / `data.sequence_dataset
 Archive: `Synthetic_dataset.zip`, 1,190,326,055 bytes.
 MD5: `06ebea7cc467ace800752bd21ec7178d`.
 Use the source record for citation and license details. Keep audio out of Git.
+
+
+## Downloaded labeled pilot
+
+The ZIP directory has now been checked: it lists 2,045 WAV files. A fixed random
+64-file pilot and the complete annotation table are available locally under
+ignored `data/raw/dcase2019/`. These are original WAVs, not the missing original
+processed data/split. Each selected member was size/CRC32 checked; the complete
+archive was not downloaded or MD5 verified. See
+[pilot preparation and evaluation](../docs/pretrained_evaluation.md).

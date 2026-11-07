@@ -15,3 +15,10 @@ Model imports now use `models.activity` / `models.boundary_refinement`.
 training. It writes timestamped frame scores, events and measured CPU computation
 time. See [setup and limitations](../docs/pretrained_baseline.md). This runner does
 not reproduce the original custom CNN+GRU experiments or implement online lookahead.
+
+
+`fetch_dcase_pilot.py` retrieves 64 fixed, seed-2026 recordings and annotations
+from the public ZIP via byte ranges, validating member CRCs and recording hashes.
+`python -m scripts.evaluate_pretrained` evaluates the frozen official model on
+that manifest. See [evaluation](../docs/pretrained_evaluation.md) for the 50 ms
+alignment, raw/smoothed controls, matching rules and comparison limitations.

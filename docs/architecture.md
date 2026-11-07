@@ -70,9 +70,10 @@ separate from reporting deadline; waiting also reduces remaining audio history.
 
 Present: custom causal CNN/GRU, refiner/context-only and correctness checks.
 Audio refinement has not beaten context-only overall. A separate official
-pretrained CNN+BiGRU now runs offline on Mac: 30.0 ms warm median compute for a
-padded 10-second example, no accuracy evaluation. It uses its own CNN/mel, not our
-32D features. See [trial](pretrained_baseline.md) and [feasibility](feasibility.md).
+pretrained CNN+BiGRU uses its own CNN/mel, not our 32D features. A new fixed
+64-file pilot measured 39.72% frame F1 and 23.6 ms median CPU compute, using full
+future context. It is not the old validation split or online latency. See
+[evaluation](pretrained_evaluation.md) and [feasibility](feasibility.md).
 Bounded-context adaptation, firmware, receiver and controller remain unimplemented.
 
 First compare causal, bounded BiGRU, context-only and PCM-refined results under

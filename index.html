@@ -101,12 +101,14 @@
           </tbody>
         </table>
       </div>
-      <p><strong>New offline trial:</strong> an official pretrained CNN+BiGRU now
-        runs on Mac CPU without training. On one unlabeled 7-second example padded
-        to 10 seconds, warm computation took 30.0 ms median (four threads, ten runs).
-        Output spacing is 64 ms. This excludes waiting and communication; accuracy
-        on project data and bounded-lookahead operation remain unverified.
-        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_baseline.md">Setup and limitations</a>.</p>
+      <p><strong>Pretrained BiGRU pilot — November 7:</strong> on a new fixed
+        64-recording DCASE2019 subset, the frozen official CNN+BiGRU achieved
+        <strong>39.72% frame micro F1</strong> (precision 82.74%, recall 26.13%)
+        at threshold 0.5 without smoothing. Four classes had zero F1.
+        Median CPU compute was 23.6 ms per full 10-second input; waiting and
+        communication are excluded. This uses future context and is not a same-data
+        comparison with the old model.
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_evaluation.md">Methods, class results and limitations</a>.</p>
       <p class="small">Course setup checks are separate from project results.
         Native_sim does not measure Nano execution speed, radio performance or energy.
         The original training/evaluation runners and checkpoints are not included yet.</p>

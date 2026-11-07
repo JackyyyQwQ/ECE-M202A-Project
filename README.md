@@ -28,7 +28,7 @@ budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvemen
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Official pretrained CNN+BiGRU | Offline CPU inference verified on one unlabeled example; no training |
+| Official pretrained CNN+BiGRU | Fixed 64-recording DCASE2019 pilot: frame micro F1 39.72%; no training |
 | Bounded-lookahead adaptation, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
@@ -54,7 +54,10 @@ Replace the audio path with a recording of at most 10 seconds. Output includes
 frame scores, decoded events and a timing report. On the initial unlabeled example,
 a 10-second padded input took 30.0 ms median computation on CPU (four threads,
 ten warm runs). This excludes audio waiting/transport and is not end-to-end latency.
-Its output step is 64 ms; accuracy on our project data has not been evaluated.
+Its output step is 64 ms. A subsequent fixed 64-recording labeled pilot measured
+**39.72% frame micro F1** (precision 82.74%, recall 26.13%) without smoothing or
+threshold tuning. This is a new subset, not the old 32-file validation comparison.
+See [evaluation and reproducible commands](docs/pretrained_evaluation.md).
 See [setup, sources and limitations](docs/pretrained_baseline.md) before reuse.
 This candidate does not replace the proposed causal path until evaluated.
 
@@ -99,8 +102,8 @@ python -m unittest discover -s tests -p 'test_baseline.py' -v
 ```
 
 These check data alignment, causality and numerical behavior, not detection
-accuracy. Evaluating detection quality still requires the original training
-artifacts and real audio.
+accuracy. Reproducing the old custom-model detection scores still requires its
+original training artifacts and split manifests.
 
 See [data setup](data/README.md) for the local WAV, annotation, split and class
 files that must be supplied. Once they are present:
