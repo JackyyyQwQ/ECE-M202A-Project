@@ -53,20 +53,32 @@ index.html    GitHub Pages website
 
 ## Python environment
 
-From the repository root, use a separate environment for offline models:
+From the repository root, use a separate conda environment for offline models.
+Create it once (the local diagnostic setup already has this environment):
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
+conda env create --prefix ./.conda --file environment.yml
+conda activate "$PWD/.conda"
 ```
 
-The dependency list covers current model/loaders; it is not the original
-experiment's version lock. Check that the definitions load:
+On later visits, only run the activation command. The environment uses Python 3.11
+and NumPy 1.26 to avoid the observed base-environment binary incompatibility.
+It is a diagnostic environment, not the original experiment's version lock.
+`requirements.txt` lists the direct model/loader dependencies. Check imports:
 
 ```bash
 python -c "from models import CausalActivityModel; print(CausalActivityModel())"
 ```
+
+Run the synthetic baseline checks without downloading audio:
+
+```bash
+python -m unittest discover -s tests -p 'test_baseline.py' -v
+```
+
+These check data alignment, causality and numerical behavior, not detection
+accuracy. See [baseline diagnosis](docs/baseline_diagnosis.md) for confirmed
+findings and what still requires the original training artifacts.
 
 See [data setup](data/README.md) for the local WAV, annotation, split and class
 files that must be supplied. Once they are present:

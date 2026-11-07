@@ -57,7 +57,9 @@ ground-truth timestamps are for evaluation only.
 
 **Present:** offline loaders, CNN/GRU and refiner; preliminary results in
 [feasibility.md](feasibility.md). Audio refinement has not beaten context-only
-overall. No project firmware, transport or controller is implemented here.
+overall. Synthetic loader, causality and numerical checks are available; see
+[baseline diagnosis](baseline_diagnosis.md). No project firmware, transport or
+controller is implemented here.
 
 **Next:** recover original runners/data/checkpoints; implement and check bounded
 PCM history; connect a Python request client; integrate encoder, fixed retrieval,
