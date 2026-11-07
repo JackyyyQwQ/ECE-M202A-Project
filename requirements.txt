@@ -1,0 +1,6 @@
+# Direct dependencies of the current offline model and dataset definitions.
+# Versions are not yet locked to the original experiment environment.
+torch
+numpy
+pandas
+soundfile

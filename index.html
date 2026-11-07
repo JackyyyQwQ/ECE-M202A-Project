@@ -2,12 +2,104 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>My Project</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="P13: selective audio retrieval from a Zephyr MCU under finite-buffer, bandwidth and reporting-deadline constraints.">
+  <meta name="theme-color" content="#102d31">
+  <title>Deadline-Aware Collaborative Audio Inference · P13</title>
+  <style>
+    :root{--ink:#102d31;--muted:#53696c;--paper:#f6f5ef;--line:#d6ded8;--accent:#11665e;--soft:#e6efea;--warm:#f3e9ce}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:1.5rem}
+    body{margin:0;background:var(--paper);color:var(--ink);font:17px/1.65 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    a{color:var(--accent);text-underline-offset:.2em}a:hover{text-decoration-thickness:2px}a:focus-visible{outline:3px solid var(--accent);outline-offset:5px}
+    .skip{position:absolute;left:1rem;top:-5rem;padding:.6rem;background:white;z-index:5}.skip:focus{top:1rem}
+    .wrap{max-width:1100px;margin:auto;padding:0 30px}header{border-bottom:1px solid var(--line)}
+    nav{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:21px 0;flex-wrap:wrap}nav strong{font-size:.85rem;letter-spacing:.1em}nav div{display:flex;gap:23px;flex-wrap:wrap}nav a{font-size:.88rem}
+    .hero{padding:72px 0 60px}.eyebrow{font-size:.76rem;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:var(--accent)}
+    h1{font-size:clamp(2.5rem,6vw,4.6rem);line-height:1.08;letter-spacing:-.055em;max-width:950px;margin:20px 0 27px;font-weight:650}
+    .lead{font-size:1.22rem;max-width:760px;color:var(--muted)}.team{font-size:.94rem;color:var(--muted)}.links{display:flex;gap:12px;flex-wrap:wrap;margin:26px 0}
+    .button{display:inline-block;padding:10px 18px;border:1px solid var(--accent);border-radius:5px;text-decoration:none;font-size:.9rem;font-weight:650}.button.primary{background:var(--ink);border-color:var(--ink);color:white}
+    .question{background:var(--ink);color:white;padding:28px 32px;border-radius:7px;margin-top:38px}.question .eyebrow{color:#a7d5c7}.question p{font-size:1.24rem;max-width:850px;margin:9px 0 0}
+    section{padding:48px 0;border-top:1px solid var(--line)}h2{font-size:2rem;line-height:1.2;letter-spacing:-.035em;margin:9px 0 18px}h3{font-size:1.08rem;margin:0 0 10px}p{margin:0 0 17px}
+    .intro{max-width:790px;color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}.card{border:1px solid var(--line);background:white;padding:25px;border-radius:7px}.card p:last-child{margin-bottom:0}
+    .card .eyebrow{margin-bottom:12px}.flow{font-size:1rem;font-weight:650}.exchange{text-align:center;color:var(--accent);padding:12px 0;font-size:.91rem}.note{background:var(--warm);padding:20px 24px;border-radius:5px;margin:22px 0}.note p:last-child{margin:0}
+    .tag{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.75rem;font-weight:700;background:var(--soft);color:var(--accent);margin-bottom:11px}.tag.planned{background:#eef0f1;color:#57636a}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:6px;margin:22px 0}table{width:100%;border-collapse:collapse;text-align:left;font-size:.94rem;background:white}th,td{padding:14px 18px;border-bottom:1px solid var(--line)}th{font-size:.8rem;background:var(--soft)}tr:last-child td{border-bottom:0}.numeric{white-space:nowrap;font-variant-numeric:tabular-nums}
+    .caption{font-size:.85rem;color:var(--muted);max-width:880px}.figures{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:26px}figure{margin:0;min-width:0}figure a{display:block}figure img{display:block;width:100%;height:auto;border:1px solid var(--line);background:white;border-radius:5px}figcaption{font-size:.82rem;color:var(--muted);margin-top:10px}
+    ol,ul{padding-left:22px}li{margin-bottom:9px}.two-col{display:grid;grid-template-columns:1.2fr 1fr;gap:45px}.sources{font-size:.9rem}.sources li{margin-bottom:12px}.foot{padding:28px 0 42px;color:var(--muted);font-size:.82rem}code{font-size:.9em}
+    @media(max-width:700px){.wrap{padding:0 20px}.hero{padding-top:44px}.grid,.figures,.two-col{grid-template-columns:1fr}.two-col{gap:25px}.question{padding:23px}.hero .lead{font-size:1.08rem}nav div{gap:16px}th,td{padding:11px 13px}section{padding:36px 0}}
+    @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  </style>
 </head>
 <body>
-  <h1>My Project</h1>
-  <p>Author: Junchi Chen</p>
-  <h2>Overview</h2>
-  <p>Project details will be added here.</p>
+  <a class="skip" href="#main">Skip to content</a>
+  <header><div class="wrap"><nav aria-label="Main navigation">
+    <strong>P13 / ECE M202A</strong>
+    <div><a href="#system">System</a><a href="#evidence">Evidence</a><a href="#plan">Next steps</a><a href="https://github.com/JackyyyQwQ/ECE-M202A-Project">GitHub ↗</a></div>
+  </nav></div></header>
+  <main id="main" class="wrap">
+    <div class="hero">
+      <div class="eyebrow">UCLA · ECE M202A / CS M213A · Fall 2026</div>
+      <h1>Deadline-Aware<br>Collaborative Audio Inference</h1>
+      <p class="lead">Send compact features first. Retrieve a little more audio when it can help—and while there is still time.</p>
+      <p class="team">Junchi Chen &amp; Wei Zhang · Project 13</p>
+      <div class="links"><a class="button primary" href="https://github.com/JackyyyQwQ/ECE-M202A-Project">Explore the repository</a><a class="button" href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/main/docs/architecture.md">Read the architecture</a></div>
+      <div class="question"><div class="eyebrow">Research question</div><p>How can a receiver select useful audio segments from an MCU's limited buffer to improve sound-event boundaries under changing communication conditions and reporting deadlines?</p></div>
+    </div>
+    <section id="system" aria-labelledby="system-title">
+      <div class="eyebrow">01 / Design</div><h2 id="system-title">One audio stream. Two cooperating models.</h2>
+      <p class="intro">Continuous raw-audio transmission costs bandwidth. A small device encoder sends learned features; a laptop detects events and may request original audio around uncertain boundaries. The research focus is deciding which requests are worth their cost.</p>
+      <div class="grid">
+        <article class="card"><div class="eyebrow">Device / Nano 33 BLE Sense + Zephyr</div><p class="flow">Audio input → finite PCM history → CNN encoder</p><p>Retain recent audio and transmit compact features. Return a requested segment while it is still available.</p><span class="tag planned">Device deployment planned</span></article>
+        <article class="card"><div class="eyebrow">Laptop / Python</div><p class="flow">Feature sequence → causal GRU → event boundaries</p><p>A controller will choose segment location and length. An audio/context refiner updates onset and offset estimates.</p><span class="tag">Offline models implemented</span></article>
+      </div>
+      <p class="exchange">Device → features / requested PCM &nbsp; · &nbsp; Laptop → timestamped audio requests</p>
+      <p class="caption">Intended architecture. The online receiver, finite audio buffer, transport and deadline-aware controller are not yet implemented in this repository.</p>
+      <div class="table-wrap"><table><caption class="caption" style="text-align:left;padding:14px 18px">Development modes</caption><thead><tr><th scope="col">Mode</th><th scope="col">What it checks</th><th scope="col">Status</th></tr></thead><tbody>
+        <tr><td>Offline Python</td><td>Detection and audio-refinement value on recorded data</td><td>Preliminary evidence</td></tr>
+        <tr><td>Zephyr native_sim + Python</td><td>Paced replay, buffer ownership and requests</td><td>Project integration planned</td></tr>
+        <tr><td>Physical Nano + Python over USB</td><td>Actual capture, memory, inference and communication</td><td>Planned</td></tr>
+      </tbody></table></div>
+      <p class="caption">A separate local course setup passed smoke/queue simulation and compiled the acoustic firmware. These are setup checks, not project-system or physical board results. Native_sim does not reproduce Nano execution speed or energy.</p>
+    </section>
+    <section id="evidence" aria-labelledby="evidence-title">
+      <div class="eyebrow">02 / Preliminary evidence</div><h2 id="evidence-title">Local gains have not yet become an overall benefit.</h2>
+      <p class="intro">November 2 offline feasibility check: a CNN + causal GRU processes 16 kHz audio in 500 ms windows, advancing every 50 ms. A frozen 32D baseline is compared with 200 ms raw-audio refinement and a context-only correction head.</p>
+      <div class="table-wrap"><table><thead><tr><th scope="col">Method</th><th scope="col">Matched-boundary MAE ↓</th><th scope="col">Extra raw audio</th></tr></thead><tbody>
+        <tr><td>Initial estimate</td><td class="numeric">380.2 ms</td><td>None</td></tr>
+        <tr><td>Audio + context refinement</td><td class="numeric">373.6 ms</td><td>Fixed 200 ms segments</td></tr>
+        <tr><td>Context-only correction</td><td class="numeric">372.4 ms</td><td>None</td></tr>
+      </tbody></table></div>
+      <p class="caption">117 eligible matched boundaries from 32 validation recordings; identical initial event pairs and censoring exclusions, with abstentions retained. Baseline fitting used 128 training recordings. Refinement used separate training recordings (192 fitting / 64 development). These are timing scores on matched boundaries, not full detection scores.</p>
+      <div class="note"><p><strong>What this supports:</strong> audio can help when the requested segment captures the true boundary. <strong>What remains unproven:</strong> overall benefit over context-only or performance under real buffer and deadline constraints. Event detection did not improve; 693 of 762 initial predictions were unmatched. The next experiments must test request value and coverage.</p></div>
+      <p>Across validation retrievals, 1,382 complete 200 ms requests cost <strong>8,844,800 PCM payload bytes</strong>; 1,263 came from unmatched predictions. Transport headers and retries were excluded. Only ten captured offsets were available, and results use one seed and a small synthetic subset.</p>
+      <div class="figures">
+        <figure><a href="results/test1_boundaries.png"><img src="results/test1_boundaries.png" alt="Original feasibility plot comparing predicted sound-event boundaries with annotations." loading="lazy"></a><figcaption>Initial boundary estimates. Open the original plot for details.</figcaption></figure>
+        <figure><a href="results/test2_before_after.png"><img src="results/test2_before_after.png" alt="Original feasibility plot comparing initial and audio-refined boundaries against annotations." loading="lazy"></a><figcaption>Before and after fixed-segment refinement. No new experiment was run for this website update.</figcaption></figure>
+      </div>
+      <p style="margin-top:24px"><a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/main/docs/feasibility.md">Full experiment conditions, controls and limitations ↗</a></p>
+    </section>
+    <section id="plan" aria-labelledby="plan-title">
+      <div class="eyebrow">03 / Work ahead</div><h2 id="plan-title">Establish audio value. Then make retrieval timely.</h2>
+      <div class="two-col"><div><ol>
+        <li><strong>Recover the experiment inputs.</strong> Original preprocessing and evaluation runners, split manifests and trained checkpoints.</li>
+        <li><strong>Implement finite history.</strong> Verify exact sample retrieval, wraparound, overwritten data and not-yet-recorded requests in Zephyr.</li>
+        <li><strong>Connect the laptop.</strong> Start with a request client, then integrate features, detection and fixed audio retrieval.</li>
+        <li><strong>Evaluate adaptive requests.</strong> Compare fixed and uncertainty-only requests with a policy considering value, available history and remaining reporting time.</li>
+      </ol></div><aside class="card"><h3>Evaluation and minimum scope</h3><p>Compare policies under comparable byte budgets and controlled bandwidth/delay. Report timely event quality, boundary error, bytes, latency, deadline misses and MCU resource use.</p><p>Minimum target: a working Nano/laptop USB prototype. Paced recording replay on the physical MCU is the fallback for microphone integration.</p><p><strong>Main risk:</strong> extra audio may not offer enough gain over existing context.</p></aside></div>
+      <p class="caption">Checkpoint 3: four slides, six minutes; presentation November 12, 2026, 5:14 p.m. Los Angeles time. Initial slides are due November 10 at 4 p.m. The checkpoint PDF has not been added yet.</p>
+    </section>
+    <section id="sources" aria-labelledby="sources-title">
+      <div class="eyebrow">04 / Foundations</div><h2 id="sources-title">Data, tools and research we build on</h2>
+      <ul class="sources">
+        <li><a href="https://zenodo.org/records/2583796">DCASE2019 task 4 synthetic data</a> — ten-second generated soundscapes. The team's preparation summary reports 2,045 recordings and a seed-2026 recording split; archive contents and actual manifests still need local verification.</li>
+        <li><a href="https://github.com/UCLA-ECEM202A/software/tree/83a3ac6ccf585b2b647d3d6c654b616de8c29cb8/zephyr">Course Zephyr toolchain and reference applications</a> — reused setup and hardware starting points; separate from our planned device application.</li>
+        <li><a href="https://doi.org/10.1016/j.procs.2025.07.180">Compression at the Edge for Energy- and Bandwidth-Efficient Industrial Audio Analysis</a> (2025).</li>
+        <li><a href="https://arxiv.org/abs/2601.14942">Communication-Efficient Multi-Modal Edge Inference via Uncertainty-Aware Distributed Learning</a> (2026).</li>
+        <li><a href="https://arxiv.org/abs/2609.31428">Wireless Evidence Acquisition for Multimodal Inference Constrained by Temporal Windows</a> (2026).</li>
+      </ul>
+      <p class="caption">Our proposed extension focuses on selecting temporal audio segments from expiring MCU history for on-time boundary refinement. The request policy and its advantage remain to be implemented and evaluated.</p>
+    </section>
+  </main>
+  <footer class="wrap foot">P13 · Junchi Chen &amp; Wei Zhang · Updated November 7, 2026 · <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project">Source and project documentation</a></footer>
 </body>
 </html>

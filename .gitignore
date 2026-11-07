@@ -1,1 +1,17 @@
 .DS_Store
+AGENTS.md
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+build/
+output/
+processed_audio/
+Synthetic_dataset/
+data/raw/
+data/processed/
+checkpoints/
+cache/
+*.wav
+*.zip
