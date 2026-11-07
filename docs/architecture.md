@@ -68,9 +68,12 @@ separate from reporting deadline; waiting also reduces remaining audio history.
 
 ## Evidence and next steps
 
-Present: offline causal CNN/GRU, refiner/context-only, and synthetic correctness
-checks. Audio refinement has not beaten context-only overall. BiGRU, project
-firmware, receiver and controller are unimplemented. See [feasibility](feasibility.md).
+Present: custom causal CNN/GRU, refiner/context-only and correctness checks.
+Audio refinement has not beaten context-only overall. A separate official
+pretrained CNN+BiGRU now runs offline on Mac: 30.0 ms warm median compute for a
+padded 10-second example, no accuracy evaluation. It uses its own CNN/mel, not our
+32D features. See [trial](pretrained_baseline.md) and [feasibility](feasibility.md).
+Bounded-context adaptation, firmware, receiver and controller remain unimplemented.
 
 First compare causal, bounded BiGRU, context-only and PCM-refined results under
 matched time/byte budgets and capacity controls. Use offline oracle selection only

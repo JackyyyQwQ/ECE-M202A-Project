@@ -99,7 +99,10 @@ learned action selector, conditional on working paths and demonstrated headroom.
 Implemented offline: loaders, causal CNN/GRU, fixed 200 ms audio refinement and
 context-only control. Preliminary audio refinement did not beat context-only
 overall. Seven synthetic correctness checks passed; these do not establish real
-accuracy. No BiGRU, online controller or project hardware loop is implemented.
+accuracy. A separate official pretrained CNN+BiGRU was subsequently smoke-tested offline
+without training; see [trial](pretrained_baseline.md). It is a candidate baseline
+with its own frontend, not an integrated bounded-lookahead path. Its project-data
+accuracy is unknown. No online controller or project hardware loop is implemented.
 See the preserved [feasibility evidence](feasibility.md).
 
 - **Wei:** recover experiment artifacts; improve causal detection; compare

@@ -28,7 +28,8 @@ budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvemen
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Bounded-lookahead BiGRU, online receiver and controller | Planned; compare paths before selection |
+| Official pretrained CNN+BiGRU | Offline CPU inference verified on one unlabeled example; no training |
+| Bounded-lookahead adaptation, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
 for the baseline. Across 117 eligible matched boundaries, MAE was **380.2 ms**
@@ -38,6 +39,25 @@ event detection did not improve. See the [full report](docs/feasibility.md) for
 matching rules, false/missed events, byte costs, sample sizes and limitations.
 These are preserved preliminary results, not a new run after this reorganization.
 
+## Pretrained baseline trial
+
+A separate official DCASE 2023 CNN+BiGRU student now runs offline on Mac CPU.
+It loads its own CNN, BiGRU and heads; it does not accept our custom 32D features.
+No training was performed. The local environment and weights are already set up.
+With the project conda environment active:
+
+```bash
+python scripts/pretrained_sed.py data/raw/smoke/panns_example.wav --output output/pretrained_smoke
+```
+
+Replace the audio path with a recording of at most 10 seconds. Output includes
+frame scores, decoded events and a timing report. On the initial unlabeled example,
+a 10-second padded input took 30.0 ms median computation on CPU (four threads,
+ten warm runs). This excludes audio waiting/transport and is not end-to-end latency.
+Its output step is 64 ms; accuracy on our project data has not been evaluated.
+See [setup, sources and limitations](docs/pretrained_baseline.md) before reuse.
+This candidate does not replace the proposed causal path until evaluated.
+
 ## Repository map
 
 ```text
@@ -45,9 +65,9 @@ models/       CNN/GRU and boundary refiner (implemented)
 data/         Dataset loaders and source/preparation notes
 firmware/     Planned Zephyr device application
 receiver/     Planned Python laptop runtime and controller
-scripts/      Space for original/recovered experiment runners
+scripts/      Pretrained inference; original training runners still pending
 configs/      Settings to add alongside working runners
-tests/        Planned focused buffer, protocol and causality checks
+tests/        Data/model correctness and pretrained timestamp export checks
 results/      Original small feasibility plots
 docs/         One-page architecture and full feasibility report
 index.html    GitHub Pages website

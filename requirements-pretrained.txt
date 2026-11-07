@@ -1,0 +1,6 @@
+# Optional Mac/CPU inference for the official DCASE 2023 CNN+BiGRU.
+torch==2.11.0
+torchaudio==2.11.0
+numpy>=1.26,<2
+soundfile==0.14.0
+scipy==1.17.1

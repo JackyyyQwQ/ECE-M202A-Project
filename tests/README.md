@@ -20,3 +20,12 @@ wraparound, overwritten/future requests, timestamp and label alignment, and
 request/response parsing. Use known synthetic sample values before real audio.
 For model changes, verify causality and compare against context-only on fixed
 recording splits. Preserve missed/false events and retrieval costs in evaluation.
+
+
+With `requirements-pretrained.txt` installed, `test_pretrained_sed.py` checks the
+64 ms timestamp grid, exclusion of padded audio, overlapping class exports and
+threshold boundaries. It requires no checkpoints or downloads. Run all checks with:
+
+```bash
+python -m unittest discover -s tests -p 'test_*.py' -v
+```

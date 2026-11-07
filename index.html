@@ -76,7 +76,7 @@
           run a small CNN encoder, and return requested segments. Deployment is planned.</li>
         <li><strong>Laptop:</strong> a causal GRU gives the initial prediction.
           Offline causal and audio/context refinement code exists; the bounded-window
-          BiGRU path is planned.</li>
+          BiGRU adaptation is planned; a separate official full-window model runs offline.</li>
         <li><strong>Controller (planned):</strong> choose REPORT, LOOKAHEAD or REFINE
           using expected benefit, delay, bytes, buffer expiry and reporting time.
           We will compare the paths before building the selector.</li>
@@ -101,6 +101,12 @@
           </tbody>
         </table>
       </div>
+      <p><strong>New offline trial:</strong> an official pretrained CNN+BiGRU now
+        runs on Mac CPU without training. On one unlabeled 7-second example padded
+        to 10 seconds, warm computation took 30.0 ms median (four threads, ten runs).
+        Output spacing is 64 ms. This excludes waiting and communication; accuracy
+        on project data and bounded-lookahead operation remain unverified.
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_baseline.md">Setup and limitations</a>.</p>
       <p class="small">Course setup checks are separate from project results.
         Native_sim does not measure Nano execution speed, radio performance or energy.
         The original training/evaluation runners and checkpoints are not included yet.</p>

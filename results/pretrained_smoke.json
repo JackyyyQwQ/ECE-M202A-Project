@@ -1,0 +1,78 @@
+{
+  "mode": "offline_full_window_cpu",
+  "training_performed": false,
+  "upstream_commit": "c6bcb45b8b986ccde5c56bb86eefaf9d19b2320c",
+  "checkpoint": "legacy_epoch=176-step=20886.ckpt",
+  "checkpoint_sha256": "16a7f4cef26265ce68623bc275a0dac0cdac1d0aa72c1ace4d89ff6c4d5fc4ce",
+  "audio": "data/raw/smoke/panns_example.wav",
+  "audio_sha256": "59429c7174a3707575581d0b4181b1e2a420bda5d1de8d5195cf0b1e07d8bdfd",
+  "input_sample_rate": 32000,
+  "model_sample_rate": 16000,
+  "duration_s": 7.0,
+  "model_window_s": 10,
+  "classes": [
+    "Alarm_bell_ringing",
+    "Blender",
+    "Cat",
+    "Dishes",
+    "Dog",
+    "Electric_shaver_toothbrush",
+    "Frying",
+    "Running_water",
+    "Speech",
+    "Vacuum_cleaner"
+  ],
+  "model_output_shape": [
+    1,
+    10,
+    156
+  ],
+  "frame_step_s": 0.064,
+  "exported_frames": 110,
+  "parameter_count": 1112420,
+  "threshold": 0.5,
+  "median_frames": 7,
+  "device": "cpu",
+  "threads": 4,
+  "platform": "macOS-15.8-arm64-arm-64bit",
+  "machine": "arm64",
+  "torch": "2.11.0",
+  "torchaudio": "2.11.0",
+  "first_compute_ms": 59.059458086267114,
+  "warm_compute_ms": [
+    27.734500006772578,
+    27.96579198911786,
+    27.43295906111598,
+    28.85174995753914,
+    28.82541692815721,
+    31.19858296122402,
+    35.931042046286166,
+    36.46195901092142,
+    56.362709030508995,
+    50.715790945105255
+  ],
+  "warm_median_compute_ms": 30.02516645938158,
+  "timing_scope": "mel + dB + normalization + CNN/BiGRU/head; excludes load, decode, resampling, event decoding, I/O, audio waiting and transport",
+  "event_count": 3,
+  "accuracy": null,
+  "limitations": "Unlabeled offline smoke run; full-window future context, centered STFT, instance normalization and symmetric median filtering. Not online latency or benchmark reproduction.",
+  "audio_source": "https://github.com/qiuqiangkong/audioset_tagging_cnn/blob/master/resources/R9_ZSCveAHg_7s.wav",
+  "checkpoint_source": "https://zenodo.org/records/7759146",
+  "events": [
+    {
+      "event_label": "Alarm_bell_ringing",
+      "onset": 0.0,
+      "offset": 2.3680000000000003
+    },
+    {
+      "event_label": "Speech",
+      "onset": 2.432,
+      "offset": 4.032
+    },
+    {
+      "event_label": "Speech",
+      "onset": 4.8,
+      "offset": 6.4
+    }
+  ]
+}
