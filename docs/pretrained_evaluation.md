@@ -112,3 +112,28 @@ separate development subset for threshold decisions and fresh evaluation recordi
 When the custom weights are available, run both systems on the saved 64-file manifest
 with the same evaluation code. Only then quantify a same-data system comparison;
 a directionality ablation additionally needs matched training and model capacity.
+
+
+## Follow-up diagnosis: default threshold misses positive frames
+
+The official class order matches our mapping. On three pilot recordings, our
+normalized mel output was compared against the pinned upstream `take_log` and
+`TorchScaler` implementations: maximum absolute difference was zero in all three.
+This checks these frontend operations, not every possible dataset/domain issue.
+
+For four zero-F1 classes, the highest raw score on any positive evaluation frame
+was below 0.5: Blender 0.2394, Dishes 0.06594, Frying 0.2826, Running_water 0.4285.
+Thus no positive frame of these classes passes the current threshold. Dishes still
+has seven false-positive frames elsewhere. These are scores, not calibrated
+probabilities or class accuracies.
+
+Ranking is not uniformly absent: Frying frame ROC AUC is 0.9394; Dishes is 0.7312
+on this pilot. This suggests threshold suitability contributes to the failure,
+while class separation also varies. AUC does not establish useful precision,
+boundary quality or a successful threshold fix. Domain shift remains a hypothesis;
+we have not established its cause or measured a correction.
+
+See [diagnostic score distributions](../results/pretrained_pilot_diagnosis.json).
+No threshold was selected and the original 39.72% result is unchanged. Use a
+separate development subset for per-class threshold calibration, followed by fresh
+evaluation recordings, rather than reporting a threshold optimized on this pilot.
