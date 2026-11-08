@@ -1,3 +1,6 @@
+# Project environment (macOS arm64 tested). Create once from the repository root:
+#   conda env create --prefix ./.conda --file environment.yml
+#   conda activate "$PWD/.conda"
 name: ee202a-audio
 channels:
   - conda-forge
@@ -5,7 +8,5 @@ dependencies:
   - python=3.11
   - pip
   - pip:
-      - "numpy>=1.26,<2"
-      - "torch>=2.2,<3"
       - "pandas>=2,<3"
-      - soundfile
+      - -r requirements-pretrained.txt

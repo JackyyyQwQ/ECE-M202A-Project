@@ -69,8 +69,16 @@ range it is the stronger model, and its 16 kHz frontend matches the Nano capture
 plan, so it is our reference detector. See the
 [comparison report](docs/dcase2019_model_comparison.md#2023-model-feature-scaling).
 
-The existing 2023 inference entry point remains available with the project conda
-environment active and a local recording of at most ten seconds:
+With the project conda environment active, reproduce and independently recount
+the public-evaluation scores (setup of data, checkpoints and upstream code is in
+the [comparison report](docs/dcase2019_model_comparison.md#evidence-and-reproduction)):
+
+```bash
+python scripts/evaluate_public.py --model 2023   # or --model 2019
+python scripts/verify_public.py --model 2023
+```
+
+Run the 2023 detector on a single recording of at most ten seconds:
 
 ```bash
 python scripts/pretrained_sed.py /path/to/recording.wav --output output/pretrained_smoke
@@ -87,18 +95,18 @@ models/       CNN/GRU and boundary refiner (implemented)
 data/         Dataset loaders and source/preparation notes
 firmware/     Planned Zephyr device application
 receiver/     Planned Python laptop runtime and controller
-scripts/      Pretrained inference; original training runners still pending
+scripts/      Pretrained inference and public evaluation; custom training runners pending
 configs/      Settings to add alongside working runners
 tests/        Data/model correctness and pretrained timestamp export checks
-results/      Original small feasibility plots
+results/      Committed score summaries and small feasibility plots
 docs/         One-page architecture and full feasibility report
 index.html    GitHub Pages website
 ```
 
 ## Python environment
 
-From the repository root, use a separate conda environment for offline models.
-Create it once (the local diagnostic setup already has this environment):
+From the repository root, use one project conda environment for all offline
+work. Create it once (it installs `requirements-pretrained.txt`):
 
 ```bash
 conda env create --prefix ./.conda --file environment.yml
@@ -107,8 +115,10 @@ conda activate "$PWD/.conda"
 
 On later visits, only run the activation command. The environment uses Python 3.11
 and NumPy 1.26 to avoid the observed base-environment binary incompatibility.
-It is a diagnostic environment, not the original experiment's version lock.
-`requirements.txt` lists the direct model/loader dependencies. Check imports:
+`requirements-pretrained.txt` pins torch/torchaudio, librosa (2019 frontend) and
+sed_eval (event metrics); `requirements-report.txt` adds plotting. To add them to an
+existing environment, run `python -m pip install -r requirements-pretrained.txt`.
+This is not the original custom experiment's version lock. Check imports:
 
 ```bash
 python -c "from models import CausalActivityModel; print(CausalActivityModel())"
@@ -118,6 +128,7 @@ Run the synthetic baseline checks without downloading audio:
 
 ```bash
 python -m unittest discover -s tests -p 'test_baseline.py' -v
+python -m unittest discover -s tests -p 'test_pretrained_sed.py' -v
 ```
 
 These check data alignment, causality and numerical behavior, not detection

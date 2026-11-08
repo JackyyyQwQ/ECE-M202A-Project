@@ -67,3 +67,16 @@ Filename/hash manifests under `results/` record that corpus. Its 2023-model scor
 (`results/pretrained_pilot_*`, `results/pretrained_full_*`) predate the
 feature-scaling correction and are superseded; to rerun, download the corpus again
 with `scripts/fetch_dcase_pilot.py --all`.
+
+## Real recordings for the official detectors
+
+- **Public evaluation (692 recordings, final test set):**
+  `python scripts/fetch_public_eval.py` downloads
+  [Zenodo 4560759](https://zenodo.org/records/4560759) into
+  `data/raw/dcase2019_public_eval/` and writes a SHA-256 manifest. Use it only to
+  score frozen configurations; do not tune thresholds, lookahead or the controller on it.
+- **Validation (1,168 recordings, development set):** only 65 recordings are
+  currently present in `data/raw/dcase2019_validation/`, re-downloaded from an
+  unofficial mirror. The downloader is still an ad-hoc local script
+  (`cache/official_validation_trial/fetch.py`) and must be moved into `scripts/`
+  before the validation set is used for reported results.

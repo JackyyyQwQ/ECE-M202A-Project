@@ -51,17 +51,37 @@ Per-class raw frame F1 after the correction ranges from 45% (dishes) to 89% (spe
 
 The corrected 2023 checkpoint is the stronger offline reference on this set, and its 16 kHz frontend matches the planned Nano capture rate; the 2019 model would require 44.1 kHz input. We therefore use the 2023 model as the reference detector, with the 2019 model as a reproduced cross-check. It does not yet provide a causal baseline, bounded lookahead, a learned MCU encoder or refinement. These results cannot be credited to our controller. Freeze this test result; tune future thresholds or models on a separate training/validation split.
 
-## Evidence and local reproduction
+## Evidence and reproduction
 
-[Committed result summary](../results/public_eval_summary.json) contains both checkpoints, scores and scoring definitions. The following detailed artifacts are local and ignored by Git:
+The [committed result summary](../results/public_eval_summary.json) contains both checkpoints, scores and scoring definitions. Detailed per-run artifacts (`metrics.json`, `scores.npz`, `events.tsv`, `per_recording.tsv`) are written to `output/public_eval/<model>/`, which is ignored by Git.
 
-- [Metrics and provenance](../output/dcase2019_model_public_eval/metrics.json)
-- [Predicted events](../output/dcase2019_model_public_eval/events.tsv)
-- [Per-recording counts](../output/dcase2019_model_public_eval/per_recording.tsv)
-
-The following commands run from the project root using the existing isolated evaluation environment. Cached code, weights, audio and detailed outputs are local ignored artifacts; these commands assume they are present. No dependencies were installed into the main project environment.
+Setup, from the repository root (audio, checkpoints and upstream code stay in ignored folders):
 
 ```sh
-OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=4 cache/public_eval_trial/env/bin/python cache/dcase2019_trial/evaluate.py
-cache/public_eval_trial/env/bin/python cache/dcase2019_trial/verify.py
+conda env create --prefix ./.conda --file environment.yml   # once
+conda activate "$PWD/.conda"
+python scripts/fetch_public_eval.py                          # 692 WAVs, MD5/SHA-256 checked
+
+# 2023 model: upstream code and checkpoint archive (MD5 65e89bb452e141267e41e5c849e05ac8)
+git clone https://github.com/DCASE-REPO/DESED_task.git cache/DESED_task
+git -C cache/DESED_task checkout c6bcb45b8b986ccde5c56bb86eefaf9d19b2320c
+mkdir -p checkpoints/dcase2023
+curl -L --fail -o checkpoints/dcase2023/baseline.zip https://zenodo.org/records/7759146/files/dcase2023_task4_baseline.zip
+unzip -j checkpoints/dcase2023/baseline.zip 'ckpt/legacy_epoch=176-step=20886.ckpt' -d checkpoints/dcase2023
+
+# 2019 model: upstream code; weights from the author's reply in upstream issue #17
+git clone https://github.com/turpaultn/DCASE2019_task4.git cache/DCASE2019_task4
+git -C cache/DCASE2019_task4 checkout 90d35b6191a5d8de05bca816ebc1a836e4a83a00
+mkdir -p checkpoints/dcase2019   # place dcase2019_t4_mdl here
 ```
+
+The 2023 runner checks the upstream revision and a clean checkout; the 2019 loader checks its revision. Checkpoint SHA-256 values are recorded in the summary and in each `metrics.json`. Evaluate and then independently recount each model:
+
+```sh
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=4 python scripts/evaluate_public.py --model 2023
+python scripts/verify_public.py --model 2023
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=4 python scripts/evaluate_public.py --model 2019
+python scripts/verify_public.py --model 2019
+```
+
+`verify_public.py` needs no model weights: it rebuilds the 50 ms targets, recounts raw TP/FP/FN from cached scores and checks per-recording totals.

@@ -1,6 +1,8 @@
-# Optional Mac/CPU inference for the official DCASE 2023 CNN+BiGRU.
+# Official pretrained detectors and their public-evaluation scoring.
 torch==2.11.0
 torchaudio==2.11.0
 numpy>=1.26,<2
 soundfile==0.14.0
 scipy==1.17.1
+librosa==0.11.0   # 2019 model frontend
+sed_eval==0.2.1   # event/segment metrics
