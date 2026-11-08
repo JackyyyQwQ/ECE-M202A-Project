@@ -19,7 +19,7 @@ import soundfile as sf
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from scripts.evaluate_pretrained import activity_targets, classification_counts, target_grid  # noqa: E402
+from scripts.scoring import activity_targets, classification_counts, target_grid  # noqa: E402
 
 DATA = ROOT / "data/raw/dcase2019_public_eval"
 

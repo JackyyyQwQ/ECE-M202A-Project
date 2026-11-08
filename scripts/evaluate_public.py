@@ -22,8 +22,13 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
+import warnings
+
 import numpy as np
-import sed_eval
+
+# dcase_util (a sed_eval dependency) imports the deprecated pkg_resources API.
+warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+import sed_eval  # noqa: E402
 import soundfile as sf
 import torch
 import torchaudio
@@ -32,14 +37,13 @@ from scipy.ndimage import median_filter
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from scripts import dcase2019_model, pretrained_sed  # noqa: E402
-from scripts.evaluate_pretrained import (  # noqa: E402
+from scripts.scoring import (  # noqa: E402
     activity_targets, classification_counts, prf, target_grid)
 from scripts.pretrained_sed import CLASSES, decode_events, frame_intervals, write_tsv  # noqa: E402
 
 DATA = ROOT / "data/raw/dcase2019_public_eval"
 # Official 2019 metadata, identical to the archive's public.tsv (checked below).
 METADATA = dcase2019_model.UPSTREAM / "dataset/metadata"
-TARGET_HOP = 800  # 50 ms scoring grid at 16 kHz (scripts/evaluate_pretrained.py)
 
 
 def model_2023():

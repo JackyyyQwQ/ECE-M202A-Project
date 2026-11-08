@@ -19,8 +19,11 @@ Run from the repository root with `conda activate "$PWD/.conda"`.
 | `fetch_public_eval.py` | Download the 692-recording DCASE2019 public evaluation set (MD5 and SHA-256 checked) |
 | `evaluate_public.py --model 2023\|2019` | Score a frozen checkpoint on that set; writes `output/public_eval/<model>/` |
 | `verify_public.py --model 2023\|2019` | Recount raw TP/FP/FN from cached scores; needs no weights |
+| `lookahead_sweep.py` | Simulate bounded lookahead (L = 0, 0.5, 1, 2 s) with the 2023 detector; `--limit N` for a quick check |
+| `fetch_validation.py` | Download the real 1,168-clip validation set from YouTube (resumable; development data) |
 | `dcase2019_model.py` | 2019 checkpoint loader and 44.1 kHz frontend (imported) |
 | `pretrained_sed.py` | 2023 checkpoint loader/frontend; single-recording inference |
+| `scoring.py` | Shared 50 ms frame targets and P/R/F1 (imported) |
 
 Setup and commands: [comparison report](../docs/dcase2019_model_comparison.md#evidence-and-reproduction).
 
@@ -30,16 +33,12 @@ time. Features follow the 2023 training code ([0, 1] per-clip scaling; see
 `normalized_mel`). See the [comparison report](../docs/dcase2019_model_comparison.md). This runner does
 not reproduce the original custom CNN+GRU experiments or implement online lookahead.
 
-## DCASE2019 synthetic corpus (superseded 2023 scores)
+## Training audio
 
-`fetch_dcase_pilot.py` retrieves 64 fixed, seed-2026 recordings and annotations
-from the public ZIP via byte ranges, validating member CRCs and recording hashes.
-`python -m scripts.evaluate_pretrained` evaluates the frozen official model on
-that manifest using the 50 ms frame alignment, raw/smoothed controls and
-matching rules described in the [comparison report](../docs/dcase2019_model_comparison.md).
+`fetch_dcase_pilot.py` downloads the DCASE2019 synthetic corpus (2,045 recordings,
+with `--all`; default: a fixed 64-recording subset) into `data/raw/dcase2019/` via
+byte ranges, checking the archive MD5 and member CRCs. It is kept as the audio
+source for training the compact Nano encoder; its earlier 2023-model scores used
+the old feature scaling and were removed.
 
-For the entire corpus, use `fetch_dcase_pilot.py --all` (resumable archive download,
-complete MD5 plus member CRC checks) and `python -m scripts.evaluate_pretrained --all`.
-This uses a separate full manifest/output folder and preserves the pilot.
-`report_pretrained.py` creates a Markdown/PDF report and two figures; it requires
-`requirements-report.txt` and does not change the model or thresholds.
+`scoring.py` holds the shared 50 ms frame-target and precision/recall/F1 helpers.

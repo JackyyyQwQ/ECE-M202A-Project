@@ -50,23 +50,14 @@ MD5: `06ebea7cc467ace800752bd21ec7178d`.
 Use the source record for citation and license details. Keep audio out of Git.
 
 
-## Completed evaluations and local storage
+## DCASE2019 synthetic corpus
 
-A fixed 64-file pilot and then all 2,045 synthetic training recordings were
-downloaded and evaluated. The full ZIP passed its published MD5 and extracted
-members passed CRC32. Originals were 44.1 kHz mono, with 6,032 event annotations.
-No original train/validation/test split was recovered or replaced.
-
-**The local synthetic training corpus was subsequently deleted at the user's
-request**, including its ZIP, WAVs, annotations and local manifests under
-`data/raw/dcase2019/`. Model weights, code, report evidence and the separate
-`data/raw/dcase2019_validation/` directory were preserved. A directory's existence
-does not establish that validation downloading or evaluation is complete.
-
-Filename/hash manifests under `results/` record that corpus. Its 2023-model scores
-(`results/pretrained_pilot_*`, `results/pretrained_full_*`) predate the
-feature-scaling correction and are superseded; to rerun, download the corpus again
-with `scripts/fetch_dcase_pilot.py --all`.
+The 2,045 synthetic recordings (44.1 kHz mono, 6,032 events) were downloaded
+and checked (archive MD5, member CRC32), then deleted locally. They are planned
+as training audio for the compact Nano encoder; download them again with
+`python scripts/fetch_dcase_pilot.py --all`. Earlier 2023-model scores on this
+corpus used the old feature scaling and were removed. No original custom-model
+train/validation/test split was recovered.
 
 ## Real recordings for the official detectors
 
@@ -75,8 +66,11 @@ with `scripts/fetch_dcase_pilot.py --all`.
   [Zenodo 4560759](https://zenodo.org/records/4560759) into
   `data/raw/dcase2019_public_eval/` and writes a SHA-256 manifest. Use it only to
   score frozen configurations; do not tune thresholds, lookahead or the controller on it.
-- **Validation (1,168 recordings, development set):** only 65 recordings are
-  currently present in `data/raw/dcase2019_validation/`, re-downloaded from an
-  unofficial mirror. The downloader is still an ad-hoc local script
-  (`cache/official_validation_trial/fetch.py`) and must be moved into `scripts/`
-  before the validation set is used for reported results.
+- **Validation (1,168 recordings, development set):** `python scripts/fetch_validation.py`
+  cuts each clip from YouTube at the official start/end times (official DESED
+  procedure; needs `requirements-download.txt` and ffmpeg) into
+  `data/raw/dcase2019_validation_youtube/`. It is resumable; removed or private
+  videos are listed in `missing.tsv` (an earlier redistribution reports ~83%
+  coverage). Re-downloaded audio may differ from the organizers' copy; report the
+  available count with any result. (An unofficial mirror's clips had inconsistent
+  durations, so they were discarded.)

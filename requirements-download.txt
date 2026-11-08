@@ -1,0 +1,2 @@
+# Optional: real validation-set download from YouTube (also requires ffmpeg).
+yt-dlp==2026.10.26
