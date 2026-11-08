@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# P13 firmware launcher: builds and runs our Zephyr app inside the p13-firmware image.
+#   bash firmware/run setup       build the image once (needs the course base image)
+#   bash firmware/run sim         build and run app/ on native_sim
+#   bash firmware/run sim-clean   same, from a pristine build directory
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+IMAGE=p13-firmware
+BUILD_VOLUME=p13-firmware-build      # build files stay out of the repository
+SIM_TIMEOUT="${SIM_TIMEOUT:-30}"     # seconds before a native_sim run is stopped
+
+run_container() {
+  docker run --rm -v "$HERE:/work" -v "$BUILD_VOLUME:/build" "$IMAGE" "$@"
+}
+
+case "${1:-help}" in
+  setup)
+    docker image inspect m202a-zephyr:4.4.2 >/dev/null 2>&1 || {
+      echo "Base image m202a-zephyr:4.4.2 not found. Run ./zephyr setup in the course" >&2
+      echo "folder (course-software/zephyr) first, with OrbStack or Docker running." >&2
+      exit 2
+    }
+    docker build -t "$IMAGE" "$HERE"
+    ;;
+  sim|sim-clean)
+    PRISTINE=auto
+    [[ "$1" == sim-clean ]] && PRISTINE=always
+    run_container sh -ec '
+      west build -p "$1" -b native_sim/native/64 /work/app -d /build/sim-app
+      timeout "$2" /build/sim-app/zephyr/zephyr.exe
+    ' sh "$PRISTINE" "$SIM_TIMEOUT"
+    ;;
+  *)
+    sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'
+    exit 2
+    ;;
+esac
