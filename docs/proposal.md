@@ -5,113 +5,104 @@ Revised November 7, 2026. This is a proposed design, not a completed system.
 
 ## Research question and setting
 
-In continuous sound-event detection, when should a receiver report a causal
-prediction, wait for bounded future features and run a bidirectional GRU, or
-retrieve original audio from an MCU's finite buffer? We will first measure the
-quality, latency and communication trade-offs of these paths, then investigate
-whether a deadline-aware controller improves on fixed choices under changing
-communication conditions and reporting budgets.
+A low-power acoustic sensor must report sound events with their onset and offset
+times within a deadline. Accurate detectors are non-causal: the official DCASE
+2023 CNN+BiGRU, our reference detector, reads the whole clip. Online, a receiver
+must therefore choose, for each uncertain boundary, whether to **report** with no
+future context, **wait** a bounded time for later features, or **retrieve** the
+original audio from an MCU's finite buffer before it is overwritten. We will
+measure the quality, latency and communication trade-offs of these paths for this
+detector, then test whether a deadline-aware controller improves on fixed choices.
 
-The device is an Arduino Nano 33 BLE Sense running Zephyr. A lightweight CNN
-encodes microphone audio into compact features; a laptop performs temporal
-detection, optional refinement and action selection. USB is the initial transport.
+The device is an Arduino Nano 33 BLE Sense running Zephyr, connected to a laptop
+over USB initially. The research contribution is the online adaptation and action
+selection around a fixed detector, not a new neural network.
 
 ## Motivation and starting points
 
-Compact features reduce continuous communication but may discard boundary detail.
-Waiting can provide future temporal context, while retrieving PCM can provide
-additional acoustic detail. Both consume reporting time; waiting also ages the
-MCU's retained history. Their complementarity is a hypothesis to test.
+The Nano cannot run the full detector (its CNN needs an estimated ~84 M MAC/s),
+and streaming raw 16 kHz PCM costs 32 KB/s. Sending compact features saves
+bandwidth but may lose boundary detail; waiting supplies future context; retrieving
+PCM restores acoustic detail. Both consume reporting time, and waiting also ages
+the audio the MCU still holds. Their complementarity is a hypothesis to test.
 
-We build on audio compression, uncertainty-guided feedback, and evidence-value
-scheduling. Dynamic inference and lookahead are established ideas: SPINN studies
-runtime inference scheduling, while sequential SED work studies future-context
-latency. Our proposed focus is the choice between waiting for future features and
-retrieving expiring historical audio for event boundaries. We do not claim that
-GRUs, adaptive inference, or uncertainty feedback are new. See
-[related work](references.md) for sources and distinctions.
+We build on audio compression, uncertainty-guided feedback, evidence-value
+scheduling, split computing and lookahead in sequential detection. We do not claim
+that GRUs, adaptive inference or uncertainty feedback are new; our focus is the
+choice between waiting for future features and retrieving expiring historical
+audio for event boundaries. See [related work](references.md).
 
 ## Proposed approach
 
-The MCU continuously maintains PCM history and emits timestamped CNN features.
-A laptop-side unidirectional GRU produces initial activity predictions and event
-boundaries. A controller will choose one action per candidate in the first version:
+**Detector (no training).** Official DCASE 2023 CNN+BiGRU: 16 kHz, 128-mel input,
+64 ms frames, ten DESED classes ([evaluation](dcase2019_model_comparison.md)).
+
+**Split.** The Nano keeps a PCM ring buffer, computes log-mel features and runs a
+compact CNN trained to reproduce the reference CNN's 128-D frame features
+(~2 KB/s at int8). Only this encoder is trained; the BiGRU and output heads are
+reused unchanged on the laptop. The full reference CNN is the accuracy upper bound
+for the compact encoder.
+
+**Actions.** A controller chooses one action per candidate in the first version:
 
 | Action | Evidence | Cost |
 |---|---|---|
-| REPORT | Current causal prediction | Base processing |
-| LOOKAHEAD | Features through a bounded future horizon, processed by a windowed BiGRU | Waiting, feature transport and extra computation |
-| REFINE | Requested PCM segment plus available context | Request, queueing, audio transfer and refinement |
+| REPORT | BiGRU on a window ending at the current frame | Base processing |
+| LOOKAHEAD | BiGRU on a window extended by L seconds of received features | Waiting and extra computation |
+| REFINE | Requested PCM, re-encoded by the full CNN on the laptop | Request, queueing, transfer and computation |
 
-The BiGRU must predict the same target interval as the causal path, using only
-features actually received by its bounded horizon. Full-recording bidirectional
-inference is not an online result. The refiner remains a separate optional laptop
-module. Existing support scores are post-retrieval and cannot select requests for
-free. Model sizes, lookahead lengths and segment sizes will be chosen on development
-data; the current 32D and 200 ms settings are starting points.
+LOOKAHEAD may use only features that have actually arrived; full-clip inference is
+an offline reference, not an online result. If REPORT (L = 0) proves too weak, a
+unidirectional GRU distilled from the BiGRU is an optional alternative.
 
-Training is offline; only the compact encoder is deployed to the MCU. We will
-improve the causal baseline first, then initially hold the encoder fixed across
-path comparisons. Joint fine-tuning is optional subsequent work and must preserve
-causal-path quality. We do not assume pretrained GRUs accept arbitrary CNN features.
+## Evaluation plan
 
-## Evaluation before controller design
+1. **Lookahead sweep.** Frame/event F1 and boundary error for L = 0, 0.5, 1, 2 s
+   versus full context, with the reference CNN. This measures what waiting can buy.
+2. **Compact encoder.** Quality loss of the Nano encoder relative to the full CNN,
+   and how much REFINE recovers per retrieved second of audio.
+3. **Headroom.** Whether the best affordable action changes across boundaries and
+   conditions. An offline oracle estimates headroom but is not a deployable policy.
+4. **Controller.** If headroom exists, a small rule-based controller using only
+   pre-action information; a learned policy is optional. If one fixed path
+   dominates, report that and simplify.
 
-1. Recover the original runners, checkpoints and recording splits; reproduce and
-   diagnose the causal baseline.
-2. Compare causal GRU, bounded-lookahead BiGRU, context-only correction, and
-   causal GRU plus PCM refinement. Measure quality, decision time and bytes.
-3. Check whether the best affordable path changes across samples and conditions.
-   An offline oracle may estimate selection headroom but is not a deployable policy.
-4. If useful headroom exists, implement a small rule-based controller using only
-   initial predictions and current resource estimates. A learned policy is optional,
-   not required. If one fixed path dominates, report that result and simplify.
+Tune thresholds, lookahead and controller settings only on development data; score
+the 692-recording public evaluation set once per frozen configuration. Compare at
+matched reporting and byte budgets under controlled link traces; count features,
+PCM, metadata and unsuccessful attempts. Compare REFINE against a similar-duration
+LOOKAHEAD.
 
-Use identical splits, class ordering and controlled link traces. Compare at
-matched reporting budgets and explicit byte budgets; count base features, extra
-features, PCM, metadata and unsuccessful attempts as applicable. Compare refinement
-against a similar-duration lookahead and context-only control. Control model
-capacity where possible, or add an ablation so extra parameters are not mistaken
-for future-context gains.
-
-Primary outcome: timely event F1 with declared class/boundary tolerances. Also
-report boundary MAE, false/missed events, bytes, latency, deadline misses, and
+Primary outcome: timely event F1 with declared class and boundary tolerances. Also
+report boundary error, false/missed events, bytes, latency, deadline misses and
 measured MCU memory/runtime. Define onset/offset deadline anchors and clock mapping
-before evaluation; ground-truth times cannot drive online actions. Waiting,
-queueing, computation and transport all count. Buffer extraction expiry is distinct
-from the final report deadline. Stress-test link delay/bandwidth and buffer lifetime.
+before evaluation; ground-truth times cannot drive online actions. Buffer expiry is
+distinct from the report deadline. Stress-test link delay/bandwidth and buffer size.
 
 ## Minimum deliverable, scope and fallback
 
-Deliver a Nano/laptop prototype with compact features, finite PCM history, a causal
-detector, bounded-lookahead and refinement comparisons, and a simple resource-aware
-selector. The controller need not outperform fixed paths to make the evaluation
-informative. If microphone integration fails, replay recordings at their original
-rate on the physical MCU. If extra evidence has no useful advantage, preserve the
-working baseline and report where added latency/communication fails to pay off.
-
-Wireless transport, custom neural-network novelty, and multi-round combinations
-of LOOKAHEAD and REFINE are outside the required scope. One stretch goal is a
-learned action selector, conditional on working paths and demonstrated headroom.
+A Nano/laptop prototype with compact features, finite PCM history, the reference
+BiGRU with bounded lookahead, REFINE, and a simple resource-aware selector. The
+controller need not beat fixed paths for the evaluation to be informative. If the
+microphone path fails, replay recordings at their original rate on the Nano. If
+the compact encoder cannot run in real time, report its measured cost and use paced
+replay of precomputed features. Wireless transport, new network architectures and
+multi-round LOOKAHEAD/REFINE combinations are out of scope; a learned selector is a
+stretch goal.
 
 ## Current evidence and responsibilities
 
-Implemented offline: loaders, causal CNN/GRU, fixed 200 ms audio refinement and
-context-only control. Preliminary audio refinement did not beat context-only
-overall. Seven synthetic correctness checks passed; these do not establish real
-accuracy. Official pretrained CNN+BiGRUs now run offline without training; see the
-[comparison report](dcase2019_model_comparison.md). The 2019 checkpoint reproduces
-its published public-evaluation score (28.97% vs 29.0% event F1). The 16 kHz 2023
-checkpoint, with feature scaling matched to its training code, is stronger (70.87%
-frame F1, 40.52% event F1) and is the reference detector. Both are candidate baselines
-with their own frontends and full future context, not integrated bounded-lookahead
-paths. No online controller or project hardware loop is implemented.
-See the preserved [feasibility evidence](feasibility.md).
+On the DCASE2019 public evaluation set with full-clip context, the 2023 detector
+reaches 70.87% frame F1 and 40.52% event macro F1 without training; the 2019
+detector reproduces its published score (28.97% vs 29.0% filtered event F1). An
+earlier custom CNN + causal GRU with a 200 ms refiner did not beat a context-only
+control ([feasibility](feasibility.md)). No online path, encoder, controller or
+hardware loop is implemented yet.
 
-- **Wei:** recover experiment artifacts; improve causal detection; compare
-  bounded-lookahead and refinement, including time alignment and fair controls.
-- **Junchi:** implement Zephyr PCM history, replay/capture and USB request handling;
-  measure resource costs and support the receiver/controller integration.
-- **Together:** lock deadline definitions, interfaces and evaluation; decide whether
-  adaptive selection is justified. For Checkpoint 3, show existing evidence and
-  this staged plan, with new measurements labeled separately.
+- **Wei:** lookahead sweep, compact-encoder training and REFINE evaluation, with
+  time alignment and fair controls.
+- **Junchi:** Zephyr PCM ring buffer, replay/capture and USB request handling;
+  measure MCU costs; receiver integration.
+- **Together:** lock deadline definitions, interfaces and the development split;
+  decide whether adaptive selection is justified. For Checkpoint 3, show the
+  reference-detector evidence, the lookahead results and this staged plan.
