@@ -61,10 +61,13 @@ On the 692-recording DCASE2019 public evaluation set with full-clip context, the
 2023 model reaches 70.87% frame F1 and 40.52% event macro F1 (2019 cross-check:
 61.90% / 28.37%, reproducing its published 29.0% filtered score). These are
 offline upper references; see [detector evaluation](dcase2019_model_comparison.md).
+Simulated online on 916 validation clips with causal hysteresis, event F1 (micro)
+is 0.229 at L = 0, 0.339 at 0.5 s, 0.374 at 2 s and 0.422 with the full clip
+([lookahead sweep](lookahead_sweep.md)).
 An earlier custom CNN + causal GRU with a 200 ms refiner did not beat a
 context-only control ([feasibility](feasibility.md)).
 
-Next: (1) lookahead sweep (L = 0, 0.5, 1, 2 s) on development data; (2) Nano PCM
+Next: (1) tune hysteresis and define the deadline on development data; (2) Nano PCM
 buffer and request protocol; (3) compact encoder and REFINE; (4) controller under
 matched byte and time budgets, keeping a fixed path if it dominates. Tune only on
 development data; score the public set once per frozen configuration. Minimum

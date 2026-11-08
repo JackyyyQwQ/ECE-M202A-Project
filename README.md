@@ -27,7 +27,7 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 |---|---|
 | Reference detector: official DCASE 2023 CNN+BiGRU (no training) | Done, offline: 70.87% frame F1 on 692 real recordings |
 | Cross-check: official DCASE 2019 CNN+BiGRU | Done: reproduces its published 29.0% event F1 |
-| Bounded-lookahead sweep (wait 0 to 2 s) | Script done; 20-clip pilot run; full run pending the validation download |
+| Bounded-lookahead sweep (wait 0 to 2 s) | Done on 916 validation clips ([results](docs/lookahead_sweep.md)) |
 | Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
 | Request protocol, laptop link, real-audio replay | Next |
 | Compact MCU encoder, PCM refinement, controller | Planned |
@@ -51,6 +51,14 @@ suppressed detections (39.20% frame F1) until fixed. These are offline upper
 references, not online or MCU results. Details, provenance and limitations:
 [detector evaluation](docs/dcase2019_model_comparison.md); scores:
 [`results/public_eval_summary.json`](results/public_eval_summary.json).
+
+**Lookahead (development set, 916 real validation clips).** Simulating the 2023
+detector online, with causal hysteresis, event F1 (micro) is 0.229 when reporting
+immediately, 0.339 after waiting 0.5 s, 0.374 after 2 s and 0.422 with the whole
+clip: the first 0.5 s recovers 57% of the gap, with sharply diminishing returns.
+Waiting mainly repairs fragmented events and their boundaries; frame F1 changes
+little. Full-clip results match the official score on this set, confirming the
+re-downloaded audio. Details: [lookahead sweep](docs/lookahead_sweep.md).
 
 The earlier custom pipeline (CNN + causal GRU, 200 ms refiner) is kept as a
 feasibility study: audio refinement did not beat a context-only control
@@ -112,9 +120,9 @@ radio performance or energy.
 
 ## Next steps
 
-1. **Lookahead sweep.** Run the 2023 BiGRU on windows that end 0, 0.5, 1 and 2 s
-   after each frame and measure how much frame/event F1 and boundary error drop
-   relative to full context. This tests whether waiting is worth anything.
+1. **Lookahead sweep.** Done on the development set: waiting pays, mostly in the
+   first 0.5 s ([results](docs/lookahead_sweep.md)). Next: tune hysteresis there and
+   define the reporting deadline.
 2. **Device path.** Ring buffer done (valid, overwritten, not-yet-recorded,
    wraparound and slow-transfer cases pass in native_sim). Next: native_sim to
    Python link, request protocol and real-audio replay.

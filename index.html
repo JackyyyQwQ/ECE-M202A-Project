@@ -88,7 +88,7 @@
           <thead><tr><th scope="col">Component</th><th scope="col">Current status</th></tr></thead>
           <tbody>
             <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings; no training.</td></tr>
-            <tr><td>Bounded-lookahead sweep</td><td>Next.</td></tr>
+            <tr><td>Bounded-lookahead sweep</td><td>Done on 916 validation clips: waiting 0.5 s recovers 57% of the event-F1 gap.</td></tr>
             <tr><td>Zephyr native_sim + Python</td><td>Our PCM ring buffer runs in native_sim and passes a 13-case self-test on a synthetic signal; protocol and laptop link next.</td></tr>
             <tr><td>Nano + laptop over USB</td><td>Course microphone firmware compiled locally; project board run not yet verified.</td></tr>
           </tbody>
@@ -105,6 +105,13 @@
         close to the published 29.0%. These are full-context offline references, not
         MCU or deadline results.
         <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/dcase2019_model_comparison.md">Detector evaluation</a>.</p>
+      <p><strong>Lookahead (development set):</strong> simulating the 2023 detector
+        online on 916 real validation clips with causal hysteresis, event F1 (micro)
+        is <strong>0.229</strong> when reporting immediately, <strong>0.339</strong>
+        after waiting 0.5 s, 0.374 after 2 s and 0.422 with the whole clip. The first
+        0.5 s recovers 57% of the gap; returns then diminish. Waiting mainly repairs
+        fragmented events and their boundaries.
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/lookahead_sweep.md">Lookahead results</a>.</p>
       <p class="small">Course setup checks are separate from project results.
         Native_sim does not measure Nano execution speed, radio performance or energy.</p>
     </section>
@@ -149,8 +156,8 @@
     <section id="plan">
       <h2>Next steps and evaluation</h2>
       <ol>
-        <li><strong>Lookahead sweep:</strong> run the 2023 BiGRU on windows ending 0, 0.5,
-          1 and 2 s after each frame and measure the loss relative to full context.</li>
+        <li><strong>Lookahead:</strong> done on the development set; next, tune the causal
+          hysteresis there and define the reporting deadline.</li>
         <li><strong>Device path:</strong> the ring buffer is done in native_sim; next are
           sample-index requests over a link to the laptop and real-audio replay.</li>
         <li><strong>Compact encoder and REFINE:</strong> a small Nano CNN trained to

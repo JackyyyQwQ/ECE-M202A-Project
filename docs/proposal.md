@@ -121,8 +121,11 @@ On the DCASE2019 public evaluation set with full-clip context, the 2023 detector
 reaches 70.87% frame F1 and 40.52% event macro F1 without training; the 2019
 detector reproduces its published score (28.97% vs 29.0% filtered event F1). An
 earlier custom CNN + causal GRU with a 200 ms refiner did not beat a context-only
-control ([feasibility](feasibility.md)). No online path, encoder, controller or
-hardware loop is implemented yet.
+control ([feasibility](feasibility.md)). Simulated online on 916 validation clips
+with causal hysteresis, waiting 0.5 s recovers 57% of the event-F1 gap between
+reporting immediately (0.229 micro) and the full clip (0.422); 2 s recovers 75%
+([lookahead sweep](lookahead_sweep.md)). The PCM ring buffer runs in native_sim;
+the link, encoder, controller and hardware loop are not implemented yet.
 
 - **Wei:** lookahead sweep, compact-encoder training and REFINE evaluation, with
   time alignment and fair controls.
