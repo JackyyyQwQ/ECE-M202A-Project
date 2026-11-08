@@ -93,34 +93,93 @@ def clip_scores(path):
     return Path(path).name, usable, len(audio) / rate, result, time.perf_counter() - start
 
 
-def score(names, outputs, annotations, durations, usable):
-    """Frame (50 ms grid) and event metrics for one lookahead setting."""
+def threshold(raw, on=0.5):
+    """No smoothing: active when the score is at least `on`."""
+    return raw >= on
+
+
+def hysteresis(raw, on=0.5, off=0.3):
+    """Causal: start an event at score >= on, end it only when the score drops below off."""
+    active = np.zeros(raw.shape, dtype=bool)
+    state = np.zeros(raw.shape[1], dtype=bool)
+    for t, frame in enumerate(raw):
+        state = np.where(state, frame >= off, frame >= on)
+        active[t] = state
+    return active
+
+
+def causal_mean(raw, frames=3, on=0.5):
+    """Causal: mean of the current and previous frames (fewer at the clip start)."""
+    total = np.cumsum(raw, axis=0)
+    shifted = np.vstack([np.zeros((frames, raw.shape[1])), total[:-frames]]) if len(raw) > frames else 0
+    count = np.minimum(np.arange(1, len(raw) + 1), frames)[:, None]
+    return (total - shifted) / count >= on
+
+
+# All decisions at frame t use frames <= t only: no delay beyond the lookahead L.
+POSTPROCESSING = {"threshold 0.5": threshold, "hysteresis 0.5/0.3": hysteresis,
+                  "causal mean (3 frames)": causal_mean}
+
+
+def score(names, outputs, annotations, durations, usable, decide):
+    """Frame (50 ms grid) and event metrics for one lookahead setting and decision rule."""
     counts = np.zeros((len(CLASSES), 3), dtype=np.int64)
-    skipped = 0
+    skipped, event_count, event_seconds = 0, 0, 0.0
     kinds = {"event": (True, True), "onset": (True, False), "offset": (False, True)}
     metrics = {k: sed_eval.sound_event.EventBasedMetrics(list(CLASSES), t_collar=0.2, percentage_of_length=0.2,
                                                        evaluate_onset=on, evaluate_offset=off)
                for k, (on, off) in kinds.items()}
     for name in names:
-        raw = outputs[name]
+        active = decide(outputs[name])
         starts, ends = target_grid(usable[name])
         index = np.floor(((starts + ends) / (2 * RATE)) / STEP_S).astype(int)
         # Clips are not padded to 10 s, so the final partial 64 ms frame may have no
         # output; skip the (at most one) 50 ms target that falls in it.
-        keep = index < len(raw)
+        keep = index < len(active)
         skipped += int((~keep).sum())
         starts, ends, index = starts[keep], ends[keep], index[keep]
-        counts += classification_counts(raw[index] >= 0.5, activity_targets(annotations[name], starts, ends))
-        native_start, native_end = frame_intervals(len(raw), STEP_S, durations[name])
-        events = decode_events((raw[:len(native_start)] >= 0.5).astype(float), native_start, native_end, 0.5)
+        counts += classification_counts(active[index], activity_targets(annotations[name], starts, ends))
+        native_start, native_end = frame_intervals(len(active), STEP_S, durations[name])
+        events = decode_events(active[:len(native_start)].astype(float), native_start, native_end, 0.5)
         predicted = [{"event_label": l, "event_onset": a, "event_offset": b} for l, a, b in events]
+        event_count += len(events)
+        event_seconds += sum(b - a for _, a, b in events)
         reference = [{"event_label": l, "event_onset": a, "event_offset": b} for l, a, b in annotations[name]]
         for metric in metrics.values():
             metric.evaluate(reference, predicted)
-    result = {"frame_micro": prf(counts.sum(axis=0)), "skipped_targets": skipped}
+    result = {"frame_micro": prf(counts.sum(axis=0)), "skipped_targets": skipped,
+              "predicted_events": event_count,
+              "reference_events": sum(len(annotations[n]) for n in names),
+              "mean_predicted_event_s": event_seconds / event_count if event_count else 0.0}
     for kind, metric in metrics.items():
-        result[f"{kind}_macro_f1"] = metric.results()["class_wise_average"]["f_measure"]["f_measure"]
+        results = metric.results()
+        result[f"{kind}_macro_f1"] = results["class_wise_average"]["f_measure"]["f_measure"]
+        result[f"{kind}_micro_f1"] = results["overall"]["f_measure"]["f_measure"]
     return result
+
+
+def save_scores(path, names, outputs, usable, durations, compute):
+    keys = list(outputs)
+    frames = max(len(outputs[k][n]) for k in keys for n in names)
+    scores = np.full((len(keys), len(names), frames, len(CLASSES)), np.nan, dtype=np.float32)
+    for i, key in enumerate(keys):
+        for j, name in enumerate(names):
+            scores[i, j, :len(outputs[key][name])] = outputs[key][name]
+    np.savez_compressed(path, keys=np.array([str(k) for k in keys]), names=np.array(names), scores=scores,
+                        lengths=np.array([len(outputs[keys[0]][n]) for n in names]),
+                        usable=np.array([usable[n] for n in names]),
+                        durations=np.array([durations[n] for n in names]), compute=np.array(compute))
+
+
+def load_scores(path):
+    data = np.load(path)
+    names = [str(n) for n in data["names"]]
+    keys = ["full" if k == "full" else float(k) for k in data["keys"]]
+    outputs = {key: {n: data["scores"][i, j, :data["lengths"][j]] for j, n in enumerate(names)}
+               for i, key in enumerate(keys)}
+    usable = dict(zip(names, data["usable"].tolist()))
+    durations = dict(zip(names, data["durations"].tolist()))
+    return names, outputs, usable, durations, data["compute"].tolist()
 
 
 def main():
@@ -131,9 +190,11 @@ def main():
                         help="frames reported per model run; >1 is faster but gives frames L..L+(hop-1)*64 ms")
     parser.add_argument("--workers", type=int, default=max(1, mp.cpu_count() - 2))
     parser.add_argument("--limit", type=int, help="use only the first N recordings (quick check)")
+    parser.add_argument("--rescore", action="store_true",
+                        help="reuse the saved scores.npz; only recompute metrics (no model runs)")
     args = parser.parse_args()
-    lookaheads = [float(x) for x in args.lookaheads.split(",")]
     folder, labels = DATASETS[args.dataset]
+    out = ROOT / "output/lookahead" / args.dataset
     if args.dataset == "public":
         print("WARNING: public evaluation is the test set; do not tune on these results.", flush=True)
 
@@ -144,51 +205,64 @@ def main():
             if row["event_label"]:
                 annotations[row["filename"]].append(
                     (row["event_label"], float(row["onset"]), float(row["offset"])))
-    names = sorted(n for n in annotations if (folder / "wav" / n).exists())
-    if args.limit:
-        names = names[:args.limit]
-    if not names:
-        raise SystemExit(f"No recordings found in {folder / 'wav'}")
-    print(f"{args.dataset}: {len(names)} of {len(annotations)} labelled recordings; "
-          f"lookaheads {lookaheads} s; {args.workers} workers", flush=True)
 
-    outputs = {key: {} for key in ["full", *lookaheads]}
-    durations, usable, compute = {}, {}, []
-    with mp.get_context("spawn").Pool(args.workers, init_worker, (lookaheads, args.hop_frames)) as pool:
-        paths = [folder / "wav" / n for n in names]
-        for i, (name, samples, duration, result, seconds) in enumerate(pool.imap_unordered(clip_scores, paths)):
-            usable[name], durations[name] = samples, duration
-            compute.append(seconds)
-            for key, scores in result.items():
-                outputs[key][name] = scores
-            if (i + 1) % 25 == 0 or i + 1 == len(names):
-                print(f"{i + 1}/{len(names)} recordings", flush=True)
+    if args.rescore:
+        names, outputs, usable, durations, compute = load_scores(out / "scores.npz")
+        lookaheads = [k for k in outputs if k != "full"]
+        print(f"Rescoring saved scores: {len(names)} recordings; lookaheads {lookaheads} s", flush=True)
+    else:
+        lookaheads = [float(x) for x in args.lookaheads.split(",")]
+        names = sorted(n for n in annotations if (folder / "wav" / n).exists())
+        if args.limit:
+            names = names[:args.limit]
+        if not names:
+            raise SystemExit(f"No recordings found in {folder / 'wav'}")
+        print(f"{args.dataset}: {len(names)} of {len(annotations)} labelled recordings; "
+              f"lookaheads {lookaheads} s; {args.workers} workers", flush=True)
+        outputs = {key: {} for key in ["full", *lookaheads]}
+        durations, usable, compute = {}, {}, []
+        with mp.get_context("spawn").Pool(args.workers, init_worker, (lookaheads, args.hop_frames)) as pool:
+            paths = [folder / "wav" / n for n in names]
+            for i, (name, samples, duration, result, seconds) in enumerate(pool.imap_unordered(clip_scores, paths)):
+                usable[name], durations[name] = samples, duration
+                compute.append(seconds)
+                for key, scores in result.items():
+                    outputs[key][name] = scores
+                if (i + 1) % 25 == 0 or i + 1 == len(names):
+                    print(f"{i + 1}/{len(names)} recordings", flush=True)
+        out.mkdir(parents=True, exist_ok=True)
+        save_scores(out / "scores.npz", names, outputs, usable, durations, compute)
 
     rows = []
-    for key in ["full", *lookaheads]:
-        result = score(names, outputs[key], annotations, durations, usable)
-        rows.append({"lookahead_s": None if key == "full" else key, **result})
-    out = ROOT / "output/lookahead" / args.dataset
-    out.mkdir(parents=True, exist_ok=True)
+    for rule, decide in POSTPROCESSING.items():
+        for key in ["full", *lookaheads]:
+            result = score(names, outputs[key], annotations, durations, usable, decide)
+            rows.append({"postprocessing": rule, "lookahead_s": None if key == "full" else key, **result})
     summary = {
         "dataset": args.dataset, "recordings": len(names), "labelled_recordings": len(annotations),
-        "detector": pretrained_sed.CHECKPOINT.name, "threshold": 0.5, "median_filter": None,
-        "hop_frames": args.hop_frames, "frame_s": STEP_S,
+        "detector": pretrained_sed.CHECKPOINT.name, "hop_frames": args.hop_frames, "frame_s": STEP_S,
         "protocol": "Each 64 ms frame predicted from audio up to L s after its end; per-window "
                     "feature normalization; frame metrics on the 50 ms grid; sed_eval event metrics "
-                    "(onset collar 200 ms; offset max(200 ms, 20%)) on the native grid.",
+                    "(onset collar 200 ms; offset max(200 ms, 20%)) on the native grid. Post-processing "
+                    "is causal (frames <= t only); no centered median filter.",
         "latency_note": "Added reporting delay is L plus the 64 ms frame; computation and transport excluded.",
         "median_compute_s_per_recording": statistics.median(compute),
         "results": rows,
     }
     (out / "summary.json").write_text(json.dumps(summary, indent=2, default=float) + "\n")
-    np.savez_compressed(out / "scores.npz", names=names,
-                        **{f"L_{k}": np.array([outputs[k][n] for n in names], dtype=object) for k in outputs})
-    print(f"\n{'lookahead':>10} {'frame F1':>9} {'event F1':>9} {'onset F1':>9} {'offset F1':>10}")
+    current = None
     for row in rows:
+        if row["postprocessing"] != current:
+            current = row["postprocessing"]
+            print(f"\n[{current}]  (event/onset/offset F1 are class-macro, as in DCASE; "
+                  f"'event uF1' pools all classes)\n{'lookahead':>10} {'frame F1':>9} {'event F1':>9}"
+                  f" {'event uF1':>10} {'onset F1':>9} {'offset F1':>10} {'events':>7} {'mean s':>7}")
         label = "full" if row["lookahead_s"] is None else f"{row['lookahead_s']:g} s"
         print(f"{label:>10} {row['frame_micro']['f1']:9.4f} {row['event_macro_f1']:9.4f} "
-              f"{row['onset_macro_f1']:9.4f} {row['offset_macro_f1']:10.4f}")
+              f"{row['event_micro_f1']:10.4f} {row['onset_macro_f1']:9.4f} {row['offset_macro_f1']:10.4f}"
+              f" {row['predicted_events']:7d} {row['mean_predicted_event_s']:7.2f}")
+    print(f"\nReference: {rows[0]['reference_events']} events in {len(names)} recordings; "
+          f"median compute {summary['median_compute_s_per_recording']:.1f} s per recording")
     print(f"Saved {out / 'summary.json'}")
 
 

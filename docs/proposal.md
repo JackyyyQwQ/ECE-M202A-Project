@@ -55,12 +55,36 @@ LOOKAHEAD may use only features that have actually arrived; full-clip inference 
 an offline reference, not an online result. If REPORT (L = 0) proves too weak, a
 unidirectional GRU distilled from the BiGRU is an optional alternative.
 
+**Baseline, method and ceiling.** Results are read against three levels:
+
+| Level | System | Role |
+|---|---|---|
+| Online baseline | Compact Nano CNN + BiGRU, REPORT only (L = 0), no retrieval | What the split system achieves with no extra time or bytes |
+| Our method | Baseline plus LOOKAHEAD and REFINE, scheduled by the controller | What extra time and bytes recover |
+| Offline ceiling | Full reference CNN on the whole clip | Upper bound for this detector |
+
+The goal is not to exceed the ceiling but to recover as much of the
+baseline-to-ceiling gap as possible per second waited and per byte sent, within
+the deadline. The two actions close different parts of the gap. LOOKAHEAD
+supplies missing future context. REFINE supplies past acoustic detail, so with
+the full CNN it can only recover what the compact encoder loses; its value is
+therefore unknown until that encoder exists, and it is a real research risk.
+
+**Stronger REFINE (optional).** Retrieved PCM also lets the laptop run a model that
+compact features cannot feed, such as the official BEATs-embedding variant of
+the 2023 baseline (published PSDS1 0.48 versus 0.35 for the plain CRNN; checkpoint
+available locally, BEATs encoder weights to download). REFINE could then improve
+selected boundaries beyond the CRNN ceiling, at a larger laptop computation cost
+that the controller must charge. This is evaluated only if the basic REFINE path works.
+
 ## Evaluation plan
 
 1. **Lookahead sweep.** Frame/event F1 and boundary error for L = 0, 0.5, 1, 2 s
    versus full context, with the reference CNN. This measures what waiting can buy.
 2. **Compact encoder.** Quality loss of the Nano encoder relative to the full CNN,
-   and how much REFINE recovers per retrieved second of audio.
+   and how much REFINE recovers per retrieved second of audio. If the loss is
+   negligible, REFINE with the full CNN has little to recover; report that and
+   consider the stronger-model REFINE variant.
 3. **Headroom.** Whether the best affordable action changes across boundaries and
    conditions. An offline oracle estimates headroom but is not a deployable policy.
 4. **Controller.** If headroom exists, a small rule-based controller using only
@@ -73,7 +97,8 @@ matched reporting and byte budgets under controlled link traces; count features,
 PCM, metadata and unsuccessful attempts. Compare REFINE against a similar-duration
 LOOKAHEAD.
 
-Primary outcome: timely event F1 with declared class and boundary tolerances. Also
+Primary outcome: timely event F1 with declared class and boundary tolerances,
+reported against the online baseline and the offline ceiling. Also
 report boundary error, false/missed events, bytes, latency, deadline misses and
 measured MCU memory/runtime. Define onset/offset deadline anchors and clock mapping
 before evaluation; ground-truth times cannot drive online actions. Buffer expiry is
