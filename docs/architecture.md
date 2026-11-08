@@ -2,85 +2,70 @@
 
 P13 · Junchi Chen & Wei Zhang · Revised November 7, 2026
 
-**Goal:** compare timely audio-inference paths, then determine whether adaptive
-selection improves on fixed choices. Full design: [proposal](proposal.md).
+**Goal:** measure when waiting for future features or retrieving buffered audio
+improves on-time event boundaries, then test whether adaptive selection beats
+fixed choices. Design rationale: [proposal](proposal.md).
 
 ## Intended runtime
 
 ```text
-Nano + Zephyr                           Laptop + Python
-mic / paced replay -> PCM history
-                  -> CNN --features--> causal GRU -> initial prediction
-                                                  |
-                                              controller
-                          +-----------------------+--------------------+
-                          |                       |                    |
-                       REPORT                 LOOKAHEAD              REFINE
-                          |                wait for features     request PCM
-                          |                bounded-window BiGRU      |
-                          |                       |             audio + context
-                          |                       |                refiner
-                          +-----------------------+--------------------+
-                                                  |
-                                               report
+Nano + Zephyr                              Laptop + Python
+mic / paced replay -> PCM ring buffer
+                   -> log-mel -> compact CNN --features--> 2023 BiGRU + heads
+                                                              |
+                                                          controller
+                             +--------------------------------+-------------+
+                             |                                |             |
+                          REPORT                          LOOKAHEAD       REFINE
+                     window ends now               wait L s, rerun     request PCM,
+                                                   bounded BiGRU     full CNN on it
+                             +--------------------------------+-------------+
+                                                              |
+                                                     event + onset/offset
 ```
 
-The MCU retains bounded PCM history, emits timestamped features and returns
-segments before overwrite. The laptop maintains causal state and chooses one
-action per candidate; combined LOOKAHEAD/REFINE actions are outside the first version.
+**Detector.** The official DCASE 2023 CNN+BiGRU (16 kHz, 128-mel, 64 ms frames)
+is the reference; it runs without training. Its full CNN (~84 M MAC/s, estimated)
+is too large for the Nano's Cortex-M4F, so the Nano will run a compact CNN trained
+to reproduce the reference CNN's 128-D frame features (~2 KB/s at int8). The BiGRU
+and output heads are reused unchanged on the laptop.
 
-## Actions and training
-
-- **REPORT:** submit the causal result without extra evidence.
-- **LOOKAHEAD:** wait a declared horizon, then use a BiGRU over a bounded feature
-  window to predict the original target interval. Later frames must actually
-  arrive; full-clip backward context is forbidden for online evaluation.
-- **REFINE:** fetch a historical PCM interval and correct the initial boundary.
-  Post-fetch support scores are not free pre-request selection signals.
-
-Train offline; deploy only the frontend/CNN to the MCU. Reproduce the causal
-baseline first, then freeze its encoder for path comparisons. Joint fine-tuning
-is a later option.
+**Actions.** REPORT uses a window ending at the current frame (no future context).
+LOOKAHEAD waits L seconds for later features and reruns the BiGRU on the bounded
+window; only features that have actually arrived may be used. REFINE requests a
+PCM interval before it is overwritten and replaces the compact features for that
+interval with the full CNN's features. The first controller version chooses one
+action per candidate, using only pre-action information.
 
 ## Execution and timing
 
 | Mode | Device | Laptop | Purpose |
 |---|---|---|---|
-| Offline | Python encoder/WAV | Python paths | Compare quality and evidence value |
-| Simulation (planned) | Zephyr native_sim/replay | Python receiver | Buffer/protocol integration |
-| Hardware (planned) | Nano/Zephyr mic or replay | Same receiver/USB | Measure actual resource costs |
+| Offline | Python, recorded WAV | Python paths | Quality vs lookahead and evidence value |
+| Simulation (planned) | Zephyr native_sim, paced replay | Python receiver | Buffer and protocol integration |
+| Hardware (planned) | Nano mic or paced replay | Same receiver over USB | Real runtime, memory, transfer |
 
-Docker supplies build tools; it does not run on the Nano. Native_sim does not
-measure Cortex-M execution time, radio performance or energy.
+Native_sim does not measure Cortex-M execution time, radio performance or energy.
 
-Current input: 16 kHz mono PCM16; 500 ms/8,000-sample windows; 50 ms/800-sample
-hop; ten labels for the latest 50 ms. First output: 0.5 s, first 450 ms unscored.
-Encoder: 32D (128D also tested). Existing refiner: exactly 200 ms, +/-100 ms correction.
-Future horizons and PCM lengths remain experiment choices.
-
-Planned messages: FEATURE(sequence, sample interval, values), AUDIO_REQUEST(id,
-start_sample, count), AUDIO_RESPONSE(id, status, PCM). Use half-open sample
-intervals; distinguish available, overwritten and not-yet-recorded samples.
-Define deadline anchors and clock mapping before evaluation. Waiting, feature/PCM
-transfer, queueing and inference all consume time. Buffer extraction expiry is
-separate from reporting deadline; waiting also reduces remaining audio history.
+Audio is 16 kHz mono PCM16. Planned messages: `FEATURE(sequence, sample interval,
+values)`, `AUDIO_REQUEST(id, start_sample, count)`, `AUDIO_RESPONSE(id, status,
+PCM)`, with half-open sample intervals and status distinguishing available,
+overwritten and not-yet-recorded samples. Waiting, feature/PCM transfer, queueing
+and inference all consume reporting time; waiting also shortens the remaining
+buffer lifetime of the audio REFINE would need. Buffer expiry and the reporting
+deadline are separate constraints; define deadline anchors and clock mapping first.
 
 ## Evidence and next steps
 
-Present: custom causal CNN/GRU and refiner/context-only code. Audio refinement
-has not beaten context-only overall. Separate official 2019/2023 CNN+BiGRUs run
-offline with their own frontends and full future context, not our 32D features.
-On 692 real public evaluation recordings, raw frame F1 is 70.87% (2023, with
-feature scaling matched to its training code) versus 61.90% (2019); event macro F1
-is 40.52% versus 28.37%. The 2019 model's filtered 28.97% matches its official 29.0%.
-The 16 kHz 2023 model is the reference detector. This is an offline reference, not the deployed causal path or online latency.
-See [baseline comparison](dcase2019_model_comparison.md) and
-[original feasibility](feasibility.md).
-Bounded-context adaptation, firmware, receiver and controller remain unimplemented.
+On the 692-recording DCASE2019 public evaluation set with full-clip context, the
+2023 model reaches 70.87% frame F1 and 40.52% event macro F1 (2019 cross-check:
+61.90% / 28.37%, reproducing its published 29.0% filtered score). These are
+offline upper references; see [detector evaluation](dcase2019_model_comparison.md).
+An earlier custom CNN + causal GRU with a 200 ms refiner did not beat a
+context-only control ([feasibility](feasibility.md)).
 
-Compare causal, bounded BiGRU, context-only and PCM paths under matched time/byte
-budgets and capacity controls. Offline oracle selection is headroom analysis only.
-Then test a simple controller using pre-action information; retain a fixed path
-if it dominates. Measure timely quality, boundary error, bytes, misses and MCU costs.
-Minimum hardware target: Nano + laptop over USB, with paced replay as microphone
-fallback.
+Next: (1) lookahead sweep (L = 0, 0.5, 1, 2 s) on development data; (2) Nano PCM
+buffer and request protocol; (3) compact encoder and REFINE; (4) controller under
+matched byte and time budgets, keeping a fixed path if it dominates. Tune only on
+development data; score the public set once per frozen configuration. Minimum
+hardware target: Nano + laptop over USB, with paced replay as microphone fallback.

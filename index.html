@@ -72,36 +72,29 @@
     <section id="system">
       <h2>System and current progress</h2>
       <ul>
-        <li><strong>MCU:</strong> capture or replay audio, retain recent PCM samples,
-          run a small CNN encoder, and return requested segments. Deployment is planned.</li>
-        <li><strong>Laptop:</strong> a causal GRU gives the initial prediction.
-          Offline causal and audio/context refinement code exists; the bounded-window
-          BiGRU adaptation is planned; a separate official full-window model runs offline.</li>
-        <li><strong>Controller (planned):</strong> choose REPORT, LOOKAHEAD or REFINE
-          using expected benefit, delay, bytes, buffer expiry and reporting time.
-          We will compare the paths before building the selector.</li>
-      </ul>
-      <p>The current offline pipeline uses 16 kHz mono audio, 500 ms input windows,
-        a 50 ms hop, and ten activity labels for the latest 50 ms. The baseline
-        encoder produces 32D features; the existing refiner uses 200 ms of audio.</p>
-      <ul>
-        <li><strong>REPORT:</strong> submit the current causal GRU result.</li>
-        <li><strong>LOOKAHEAD:</strong> wait a bounded horizon, then use a BiGRU on
-          features actually received to predict the original target interval.</li>
-        <li><strong>REFINE:</strong> retrieve a PCM segment and use the audio/context
-          refiner. The refiner remains part of the proposal.</li>
+        <li><strong>Nano:</strong> capture or replay 16 kHz audio, keep a short PCM ring
+          buffer, run a compact CNN that reproduces the reference detector's frame
+          features, and return requested PCM segments. Planned.</li>
+        <li><strong>Laptop:</strong> the official DCASE 2023 BiGRU and output heads,
+          reused without training, turn the features into events with onset and offset
+          times. The full detector runs offline today.</li>
+        <li><strong>Controller (planned):</strong> for each uncertain boundary choose
+          REPORT (no future context), LOOKAHEAD (wait a bounded time for later
+          features) or REFINE (retrieve buffered PCM before it is overwritten),
+          given delay, bytes, buffer expiry and the reporting deadline.</li>
       </ul>
       <div class="table-scroll">
         <table>
-          <thead><tr><th scope="col">Environment</th><th scope="col">Current status</th></tr></thead>
+          <thead><tr><th scope="col">Component</th><th scope="col">Current status</th></tr></thead>
           <tbody>
-            <tr><td>Offline Python</td><td>Dataset loaders, CNN/GRU, refinement and context-only control implemented.</td></tr>
-            <tr><td>Zephyr native_sim + Python</td><td>Course smoke/queue examples ran locally; project audio integration is planned.</td></tr>
-            <tr><td>Nano + Zephyr + laptop over USB</td><td>Course acoustic firmware compiled locally; project board execution is not yet verified.</td></tr>
+            <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings; no training.</td></tr>
+            <tr><td>Bounded-lookahead sweep</td><td>Next.</td></tr>
+            <tr><td>Zephyr native_sim + Python</td><td>Course queue demo ran locally; project buffer and protocol planned.</td></tr>
+            <tr><td>Nano + laptop over USB</td><td>Course microphone firmware compiled locally; project board run not yet verified.</td></tr>
           </tbody>
         </table>
       </div>
-      <p><strong>Pretrained baseline progress:</strong> the official 2019 and 2023
+      <p><strong>Reference detectors:</strong> the official 2019 and 2023
         CNN+BiGRUs were evaluated on the same <strong>692 real public evaluation
         recordings</strong>, without training or threshold tuning. Raw frame F1 was
         <strong>70.87% for 2023</strong> versus <strong>61.90% for 2019</strong>;
@@ -109,16 +102,17 @@
         scaling matched to its training code and the same 16 kHz rate as our capture
         plan, so it is our reference detector. With its official five-frame
         median filter, the 2019 model reached <strong>28.97% event macro F1</strong>,
-        close to the published 29.0%. Frontend and score-counting checks passed.
-        These are full-context offline references, not MCU or deadline results.
-        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/dcase2019_model_comparison.md">Comparison report</a>.</p>
+        close to the published 29.0%. These are full-context offline references, not
+        MCU or deadline results.
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/dcase2019_model_comparison.md">Detector evaluation</a>.</p>
       <p class="small">Course setup checks are separate from project results.
-        Native_sim does not measure Nano execution speed, radio performance or energy.
-        The original training/evaluation runners and checkpoints are not included yet.</p>
+        Native_sim does not measure Nano execution speed, radio performance or energy.</p>
     </section>
 
     <section id="evidence">
-      <h2>Preliminary results — November 2, 2026</h2>
+      <h2>Earlier feasibility study — November 2, 2026</h2>
+      <p>This study used our own small CNN + causal GRU and a 200 ms refiner,
+        before we adopted the official detector.</p>
       <p>Offline comparison on <strong>117 eligible matched boundaries from 32
         validation recordings</strong>. The initial baseline was trained on 128
         recordings; refinement used separate training recordings (192 fitting,
@@ -155,15 +149,17 @@
     <section id="plan">
       <h2>Next steps and evaluation</h2>
       <ol>
-        <li>Use the reproduced 2019 detector as an offline reference; recover the
-          original runners and establish a causal baseline on separate training/validation data.</li>
-        <li>Compare causal GRU, bounded-window BiGRU, context-only correction and
-          PCM refinement with the same encoder and controlled model capacity.</li>
-        <li>Implement finite PCM history and USB retrieval; verify overwritten,
-          future and wraparound requests, then measure costs on the Nano.</li>
-        <li>Measure whether different paths help different cases, then test a simple
-          resource-aware selector. If one fixed path dominates, simplify and report it.</li>
+        <li><strong>Lookahead sweep:</strong> run the 2023 BiGRU on windows ending 0, 0.5,
+          1 and 2 s after each frame and measure the loss relative to full context.</li>
+        <li><strong>Device path:</strong> Nano PCM ring buffer and USB sample-index
+          requests; verify overwritten, not-yet-recorded and wraparound cases.</li>
+        <li><strong>Compact encoder and REFINE:</strong> a small Nano CNN trained to
+          reproduce the reference features; retrieved PCM is re-encoded by the full CNN.</li>
+        <li><strong>Controller:</strong> compare report / wait / retrieve; if one fixed
+          path dominates, simplify and report it.</li>
       </ol>
+      <p>Thresholds, lookahead and controller settings are chosen on development data;
+        the public evaluation set is scored once per frozen configuration.</p>
       <p>Compare at matched reporting budgets and explicit byte budgets under
         controlled link conditions. Count waiting, transfer, queueing and computation.
         Measure timely event quality, boundary error, bytes, latency, deadline misses
