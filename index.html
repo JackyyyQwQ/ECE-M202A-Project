@@ -89,7 +89,7 @@
           <tbody>
             <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings; no training.</td></tr>
             <tr><td>Bounded-lookahead sweep</td><td>Next.</td></tr>
-            <tr><td>Zephyr native_sim + Python</td><td>Course queue demo ran locally; project buffer and protocol planned.</td></tr>
+            <tr><td>Zephyr native_sim + Python</td><td>Our PCM ring buffer runs in native_sim and passes a 13-case self-test on a synthetic signal; protocol and laptop link next.</td></tr>
             <tr><td>Nano + laptop over USB</td><td>Course microphone firmware compiled locally; project board run not yet verified.</td></tr>
           </tbody>
         </table>
@@ -151,8 +151,8 @@
       <ol>
         <li><strong>Lookahead sweep:</strong> run the 2023 BiGRU on windows ending 0, 0.5,
           1 and 2 s after each frame and measure the loss relative to full context.</li>
-        <li><strong>Device path:</strong> Nano PCM ring buffer and USB sample-index
-          requests; verify overwritten, not-yet-recorded and wraparound cases.</li>
+        <li><strong>Device path:</strong> the ring buffer is done in native_sim; next are
+          sample-index requests over a link to the laptop and real-audio replay.</li>
         <li><strong>Compact encoder and REFINE:</strong> a small Nano CNN trained to
           reproduce the reference features; retrieved PCM is re-encoded by the full CNN.</li>
         <li><strong>Controller:</strong> compare report / wait / retrieve; if one fixed

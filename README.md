@@ -27,8 +27,9 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 |---|---|
 | Reference detector: official DCASE 2023 CNN+BiGRU (no training) | Done, offline: 70.87% frame F1 on 692 real recordings |
 | Cross-check: official DCASE 2019 CNN+BiGRU | Done: reproduces its published 29.0% event F1 |
-| Bounded-lookahead sweep (wait 0 to 2 s) | Next |
-| Nano PCM ring buffer, request protocol, USB transport | Planned |
+| Bounded-lookahead sweep (wait 0 to 2 s) | Script done; 20-clip pilot run; full run pending the validation download |
+| Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
+| Request protocol, laptop link, real-audio replay | Next |
 | Compact MCU encoder, PCM refinement, controller | Planned |
 | Earlier custom CNN + causal GRU and 200 ms refiner | Preliminary feasibility only ([report](docs/feasibility.md)) |
 
@@ -90,7 +91,7 @@ data/         Data sources, download notes and custom-model loaders
 tests/        Feature range, timestamp export and custom-model checks
 results/      Committed score summaries and small figures
 docs/         Proposal, one-page architecture, evaluations, related work
-firmware/     Zephyr device application (planned)
+firmware/     Zephyr app, toolchain image and launcher (ring buffer done)
 receiver/     Laptop runtime and controller (planned)
 configs/      Experiment settings (added with working runners)
 index.html    Project website (plain HTML, no build step)
@@ -99,8 +100,9 @@ index.html    Project website (plain HTML, no build step)
 ## Hardware and simulation
 
 1. **Offline Python**: recorded audio through the detectors. Current work.
-2. **Zephyr native_sim + Python receiver**: paced replay, finite buffer and
-   request/response checks. Planned.
+2. **Zephyr native_sim + Python receiver**: the ring buffer runs and passes its
+   self-test in native_sim (`bash firmware/run sim`); replay, protocol and the
+   Python link are next.
 3. **Nano + Zephyr + Python receiver over USB**: microphone or paced replay. Planned.
 
 The toolchain comes from the
@@ -113,8 +115,9 @@ radio performance or energy.
 1. **Lookahead sweep.** Run the 2023 BiGRU on windows that end 0, 0.5, 1 and 2 s
    after each frame and measure how much frame/event F1 and boundary error drop
    relative to full context. This tests whether waiting is worth anything.
-2. **Device path.** Nano PCM ring buffer with sample-index requests; check
-   valid, overwritten, not-yet-recorded and wraparound cases; Python request client.
+2. **Device path.** Ring buffer done (valid, overwritten, not-yet-recorded,
+   wraparound and slow-transfer cases pass in native_sim). Next: native_sim to
+   Python link, request protocol and real-audio replay.
 3. **Compact encoder and refinement.** A small CNN on the Nano trained to reproduce
    the reference CNN's features (the BiGRU is reused unchanged); retrieved PCM is
    re-encoded by the full CNN on the laptop.

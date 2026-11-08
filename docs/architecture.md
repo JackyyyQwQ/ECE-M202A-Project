@@ -42,7 +42,7 @@ action per candidate, using only pre-action information.
 | Mode | Device | Laptop | Purpose |
 |---|---|---|---|
 | Offline | Python, recorded WAV | Python paths | Quality vs lookahead and evidence value |
-| Simulation (planned) | Zephyr native_sim, paced replay | Python receiver | Buffer and protocol integration |
+| Simulation (in progress) | Zephyr native_sim; ring buffer done, replay next | Python receiver (next) | Buffer and protocol integration |
 | Hardware (planned) | Nano mic or paced replay | Same receiver over USB | Real runtime, memory, transfer |
 
 Native_sim does not measure Cortex-M execution time, radio performance or energy.
