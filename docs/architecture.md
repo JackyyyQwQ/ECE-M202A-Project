@@ -25,10 +25,9 @@ mic / paced replay -> PCM history
                                                report
 ```
 
-The MCU continuously retains bounded PCM history, emits timestamped compact
-features and returns requested segments before overwrite. The laptop maintains
-causal state and chooses one action per candidate initially; repeated or combined
-LOOKAHEAD/REFINE actions are outside the first version.
+The MCU retains bounded PCM history, emits timestamped features and returns
+segments before overwrite. The laptop maintains causal state and chooses one
+action per candidate; combined LOOKAHEAD/REFINE actions are outside the first version.
 
 ## Actions and training
 
@@ -39,9 +38,9 @@ LOOKAHEAD/REFINE actions are outside the first version.
 - **REFINE:** fetch a historical PCM interval and correct the initial boundary.
   Post-fetch support scores are not free pre-request selection signals.
 
-Train models offline; deploy only the compact frontend/CNN to the MCU. Improve
-and reproduce the causal baseline first. Initially freeze the same encoder for
-path comparisons; shared/jointly fine-tuned heads are a later option, not implemented.
+Train offline; deploy only the frontend/CNN to the MCU. Reproduce the causal
+baseline first, then freeze its encoder for path comparisons. Joint fine-tuning
+is a later option.
 
 ## Execution and timing
 
@@ -70,15 +69,16 @@ separate from reporting deadline; waiting also reduces remaining audio history.
 
 Present: custom causal CNN/GRU, refiner/context-only and correctness checks.
 Audio refinement has not beaten context-only overall. A separate official
-pretrained CNN+BiGRU uses its own CNN/mel, not our 32D features. A new fixed
-64-file pilot measured 39.72% frame F1 and 23.6 ms median CPU compute, using full
-future context. It is not the old validation split or online latency. See
-[evaluation](pretrained_evaluation.md) and [feasibility](feasibility.md).
+pretrained CNN+BiGRU uses its own CNN/mel, not our 32D features. A full
+2,045-file evaluation measured 41.10% frame F1 and 28.0 ms median CPU compute,
+using full future context. Audio is mono, matching the single onboard microphone.
+This is public training data, not the old split or online latency. See
+[report](pretrained_full_report.md) and [feasibility](feasibility.md).
 Bounded-context adaptation, firmware, receiver and controller remain unimplemented.
 
-First compare causal, bounded BiGRU, context-only and PCM-refined results under
-matched time/byte budgets and capacity controls. Use offline oracle selection only
-as headroom analysis. Then test a simple controller using pre-action information;
-retain a fixed path if it dominates. Measure timely event quality, boundary error,
-bytes, misses and MCU costs. Minimum hardware target is Nano + laptop over USB,
-with paced replay as microphone fallback.
+Compare causal, bounded BiGRU, context-only and PCM paths under matched time/byte
+budgets and capacity controls. Offline oracle selection is headroom analysis only.
+Then test a simple controller using pre-action information; retain a fixed path
+if it dominates. Measure timely quality, boundary error, bytes, misses and MCU costs.
+Minimum hardware target: Nano + laptop over USB, with paced replay as microphone
+fallback.

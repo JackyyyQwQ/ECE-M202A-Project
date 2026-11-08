@@ -22,3 +22,10 @@ from the public ZIP via byte ranges, validating member CRCs and recording hashes
 `python -m scripts.evaluate_pretrained` evaluates the frozen official model on
 that manifest. See [evaluation](../docs/pretrained_evaluation.md) for the 50 ms
 alignment, raw/smoothed controls, matching rules and comparison limitations.
+
+
+For the entire corpus, use `fetch_dcase_pilot.py --all` (resumable archive download,
+complete MD5 plus member CRC checks) and `python -m scripts.evaluate_pretrained --all`.
+This uses a separate full manifest/output folder and preserves the pilot.
+`report_pretrained.py` creates the full Markdown/PDF report and two figures; it
+requires `requirements-report.txt` and does not change the model or thresholds.

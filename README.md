@@ -28,7 +28,7 @@ budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvemen
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Official pretrained CNN+BiGRU | Fixed 64-recording DCASE2019 pilot: frame micro F1 39.72%; no training |
+| Official pretrained CNN+BiGRU | Full 2,045-recording DCASE2019 evaluation: frame micro F1 41.10%; no training |
 | Bounded-lookahead adaptation, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
@@ -59,7 +59,25 @@ Its output step is 64 ms. A subsequent fixed 64-recording labeled pilot measured
 threshold tuning. This is a new subset, not the old 32-file validation comparison.
 See [evaluation and reproducible commands](docs/pretrained_evaluation.md).
 See [setup, sources and limitations](docs/pretrained_baseline.md) before reuse.
-This candidate does not replace the proposed causal path until evaluated.
+A subsequent **full-corpus evaluation** covered all 2,045 recordings (5.68 hours):
+frame micro F1 **41.10%**, precision **84.79%**, recall **27.13%** at the same fixed
+threshold. All original audio is 44.1 kHz mono. Median CPU computation was 28.0 ms
+per 10-second input, excluding audio collection and communication. These public
+synthetic training recordings are not an independent official test set; pretraining
+overlap remains unaudited. This candidate does not replace the causal path.
+
+[Full report](docs/pretrained_full_report.md) · [Three-page PDF](docs/pretrained_full_report.pdf)
+
+```bash
+python scripts/fetch_dcase_pilot.py --all
+python -m scripts.evaluate_pretrained --all
+```
+
+Generate the report after installing `requirements-report.txt`:
+
+```bash
+python scripts/report_pretrained.py
+```
 
 ## Repository map
 

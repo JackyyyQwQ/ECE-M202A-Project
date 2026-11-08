@@ -6,9 +6,10 @@ with Scaper from foreground events and domestic backgrounds.
 
 The team's preparation summary reports 2,045 recordings, ten classes, resampling
 from 44.1 kHz to 16 kHz mono PCM16, and a recording-level 80/10/10 split with seed
-2026. These counts/formats and the actual split manifests have not yet been
-checked against downloaded files in this checkout. Preserve the team's existing
-split and class ordering rather than silently generating a replacement.
+2026. The original archive count and 44.1 kHz mono format are now verified.
+The team's processed 16 kHz files and original split manifests have not been
+recovered. Preserve the team's split and class ordering rather than silently
+generating a replacement.
 
 ## Files expected by the existing loaders
 
@@ -54,6 +55,16 @@ Use the source record for citation and license details. Keep audio out of Git.
 The ZIP directory has now been checked: it lists 2,045 WAV files. A fixed random
 64-file pilot and the complete annotation table are available locally under
 ignored `data/raw/dcase2019/`. These are original WAVs, not the missing original
-processed data/split. Each selected member was size/CRC32 checked; the complete
-archive was not downloaded or MD5 verified. See
+processed data/split. Each selected member was size/CRC32 checked. During the initial pilot, the complete
+archive was not downloaded or MD5 verified; the full archive is now verified below. See
 [pilot preparation and evaluation](../docs/pretrained_evaluation.md).
+
+
+## Full archive available locally
+
+All 2,045 WAVs are now downloaded under `data/raw/dcase2019/wav/` and checked.
+The complete ZIP passed the published MD5; each extracted member passed CRC32.
+All originals are 44.1 kHz mono, with 6,032 event annotations. Full evaluation
+uses `full_manifest.csv` / `full_source.json`; it preserves the 64-file pilot
+manifest. No original train/validation/test split was recovered or replaced.
+See the [full evaluation report](../docs/pretrained_full_report.md).

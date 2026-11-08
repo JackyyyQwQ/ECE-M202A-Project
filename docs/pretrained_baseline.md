@@ -120,3 +120,12 @@ official CNN has not been fitted to the Nano or exported to Zephyr.
 The labeled pilot is documented separately; next audit its failure classes and
 possible pretraining-data overlap. Then test bounded context at a fixed target time. Test timing, normalization and postprocessing together before claiming online
 causality; do not obtain a causal model merely by removing the backward GRU.
+
+
+## Full-corpus evaluation
+
+The same frozen model and fixed threshold have now been evaluated on all 2,045
+DCASE2019 synthetic recordings. Raw frame micro F1 is 41.10% (precision 84.79%,
+recall 27.13%); median CPU computation is 28.0 ms per 10-second input. The previous
+smoke and pilot results remain unchanged. See the [full report](pretrained_full_report.md)
+and [PDF](pretrained_full_report.pdf) for conditions, per-class results and limits.

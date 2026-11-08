@@ -101,14 +101,16 @@
           </tbody>
         </table>
       </div>
-      <p><strong>Pretrained BiGRU pilot — November 7:</strong> on a new fixed
-        64-recording DCASE2019 subset, the frozen official CNN+BiGRU achieved
-        <strong>39.72% frame micro F1</strong> (precision 82.74%, recall 26.13%)
-        at threshold 0.5 without smoothing. Four classes had zero F1.
-        Median CPU compute was 23.6 ms per full 10-second input; waiting and
-        communication are excluded. This uses future context and is not a same-data
-        comparison with the old model.
-        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_evaluation.md">Methods, class results and limitations</a>.</p>
+      <p><strong>Full pretrained BiGRU evaluation - November 7:</strong> the frozen
+        official CNN+BiGRU was evaluated on all <strong>2,045 DCASE2019 recordings</strong>
+        (5.68 hours), yielding <strong>41.10% frame micro F1</strong>
+        (precision 84.79%, recall 27.13%) at threshold 0.5 without smoothing.
+        Median CPU compute was 28.0 ms per 10-second input, excluding waiting and
+        communication. All original audio is mono, suitable for our single-microphone
+        event-detection setting. This uses public synthetic training recordings and
+        future context; it is not an independent test or the old validation comparison.
+        <a href="docs/pretrained_full_report.pdf">Three-page report (PDF)</a> ·
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_full_report.md">Methods and evidence</a>.</p>
       <p class="small">Course setup checks are separate from project results.
         Native_sim does not measure Nano execution speed, radio performance or energy.
         The original training/evaluation runners and checkpoints are not included yet.</p>
@@ -170,7 +172,7 @@
         Paced recording replay on the physical MCU is the fallback for microphone
         integration. The main research risk is insufficient complementary benefit
         from future context and extra audio.</p>
-      <p class="small">Checkpoint 3: November 12, 2026, 5:14 p.m., Los Angeles time.
+      <p class="small">Checkpoint 3 presentation: November 12, 2026, 5:14 p.m., Los Angeles time.
         Initial slides are due November 10 at 4 p.m. The checkpoint PDF is not yet available.</p>
     </section>
 

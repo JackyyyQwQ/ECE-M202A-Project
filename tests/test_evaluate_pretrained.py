@@ -15,8 +15,12 @@ class EvaluationTests(unittest.TestCase):
         trimmed, difference = nominal_ten_seconds(audio, 44100)
         self.assertEqual(difference, 1)
         np.testing.assert_array_equal(trimmed, audio[:441000])
+        two_extra = np.arange(441002, dtype=np.float32)[:, None]
+        trimmed, difference = nominal_ten_seconds(two_extra, 44100)
+        self.assertEqual(difference, 2)
+        np.testing.assert_array_equal(trimmed, two_extra[:441000])
         with self.assertRaises(ValueError):
-            nominal_ten_seconds(np.zeros((441002, 1)), 44100)
+            nominal_ten_seconds(np.zeros((441003, 1)), 44100)
 
     def test_grid_matches_original_191_targets(self):
         starts, ends = target_grid(160000)

@@ -102,8 +102,10 @@ overall. Seven synthetic correctness checks passed; these do not establish real
 accuracy. A separate official pretrained CNN+BiGRU was subsequently smoke-tested offline
 without training; see [trial](pretrained_baseline.md). It is a candidate baseline
 with its own frontend, not an integrated bounded-lookahead path. A subsequent
-[new 64-recording pilot](pretrained_evaluation.md) measured 39.72% frame F1, with
-low recall; it does not reproduce the old validation split. No online controller or project hardware loop is implemented.
+[64-recording pilot](pretrained_evaluation.md) measured 39.72% frame F1; the
+subsequent [full 2,045-recording evaluation](pretrained_full_report.md) measured
+41.10%, still with low recall. Neither reproduces the old validation split or
+establishes independent generalization beyond pretraining data. No online controller or project hardware loop is implemented.
 See the preserved [feasibility evidence](feasibility.md).
 
 - **Wei:** recover experiment artifacts; improve causal detection; compare

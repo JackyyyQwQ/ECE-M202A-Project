@@ -1,5 +1,7 @@
 # Pretrained BiGRU on DCASE2019: fixed 64-recording pilot
 
+This page preserves the 64-file pilot. See the subsequent [full-corpus report](pretrained_full_report.md) for all 2,045 recordings.
+
 Measured November 7, 2026. Frozen official DCASE 2023 plain CNN+BiGRU student;
 no training, threshold tuning or checkpoint selection on this pilot.
 

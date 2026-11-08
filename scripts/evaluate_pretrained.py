@@ -12,7 +12,7 @@ import json
 import platform
 import statistics
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -34,11 +34,11 @@ def target_grid(sample_count, sample_rate=16000):
 
 
 def nominal_ten_seconds(audio, sample_rate):
-    """Handle the archive's one-sample duration rounding; reject larger mismatches."""
+    """Handle observed one/two-sample duration rounding; reject larger mismatches."""
     expected = 10 * sample_rate
     difference = len(audio) - expected
-    if abs(difference) > 1 or not np.isfinite(audio).all():
-        raise ValueError("Expected finite audio within one sample of ten seconds")
+    if abs(difference) > 2 or not np.isfinite(audio).all():
+        raise ValueError("Expected finite audio within two samples of ten seconds")
     audio = audio[:expected]
     if len(audio) < expected:
         audio = np.pad(audio, ((0, expected - len(audio)), (0, 0)))
@@ -91,13 +91,20 @@ def main():
     parser.add_argument("--checkpoint", type=Path, default=CHECKPOINT)
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--threads", type=int, default=4)
+    parser.add_argument("--all", action="store_true", help="Use full_manifest.csv, preserving the pilot")
     args = parser.parse_args()
     if not 0 <= args.threshold <= 1 or args.threads < 1:
         parser.error("threshold must be in [0, 1]; threads must be positive")
-    with (args.data / "pilot_manifest.csv").open() as handle:
+    prefix = "full" if args.all else "pilot"
+    if args.all and args.output == ROOT / "output/pretrained_pilot":
+        args.output = ROOT / "output/pretrained_full"
+    manifest_path = args.data / f"{prefix}_manifest.csv"
+    with manifest_path.open() as handle:
         manifest = list(csv.DictReader(handle))
     if not manifest or len({r["filename"] for r in manifest}) != len(manifest):
         raise ValueError("Manifest must be non-empty with unique filenames")
+    if args.all and len(manifest) != 2045:
+        raise ValueError("Full evaluation requires all 2045 recordings")
     annotations = defaultdict(list)
     with (args.data / "synthetic_dataset.csv").open() as handle:
         for row in csv.DictReader(handle, delimiter="\t"):
@@ -117,6 +124,7 @@ def main():
     resamplers, compute_ms, cached_scores, event_rows, recording_rows = {}, [], [], [], []
     total_frames, total_seconds = 0, 0.0
     adjusted_recordings = []
+    source_channels, source_rates = Counter(), Counter()
     started = time.perf_counter()
     with torch.inference_mode():
         model(normalized_mel(torch.zeros(1, 160000), mel))  # one unmeasured warm-up
@@ -125,6 +133,8 @@ def main():
             if hashlib.sha256(path.read_bytes()).hexdigest() != item["sha256"]:
                 raise ValueError(f"Audio hash mismatch: {path.name}")
             audio, original_rate = sf.read(path, dtype="float32", always_2d=True)
+            source_channels[audio.shape[1]] += 1
+            source_rates[original_rate] += 1
             audio, difference = nominal_ten_seconds(audio, original_rate)
             if difference:
                 adjusted_recordings.append({"filename": path.name, "extra_source_samples": difference})
@@ -167,21 +177,25 @@ def main():
                                        len(events), len(reference), len(pairs), compute_ms[-1]))
             total_frames += len(starts)
             total_seconds += len(waveform) / rate
-            if (index + 1) % 8 == 0:
+            if (index + 1) % (128 if args.all else 8) == 0:
                 print(f"Evaluated {index + 1}/{len(manifest)} recordings", flush=True)
     report = {
         "dataset": "DCASE2019 synthetic, Zenodo 2583796", "mode": "offline_full_window",
-        "selection": json.loads((args.data / "pilot_source.json").read_text()),
+        "selection": json.loads((args.data / f"{prefix}_source.json").read_text()),
         "recordings": len(manifest), "audio_seconds": total_seconds, "frames": total_frames,
         "classes": CLASSES, "threshold": args.threshold, "training_performed": False,
         "duration_rounding": adjusted_recordings,
+        "source_audio_channels": dict(source_channels),
+        "source_audio_sample_rates": dict(source_rates),
+        "selected_annotation_events": sum(len(annotations[r["filename"]]) for r in manifest),
         "threshold_tuned": False, "original_32_recording_validation_split": False,
-        "manifest_sha256": hashlib.sha256((args.data / "pilot_manifest.csv").read_bytes()).hexdigest(),
+        "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "checkpoint_sha256": hashlib.sha256(args.checkpoint.read_bytes()).hexdigest(),
         "checkpoint": args.checkpoint.name, "upstream_commit": UPSTREAM_COMMIT,
         "timing": {"device": "cpu", "threads": args.threads, "platform": platform.platform(),
                    "torch": torch.__version__, "torchaudio": torchaudio.__version__,
                    "warm_compute_ms": compute_ms, "median_compute_ms": statistics.median(compute_ms),
+                   "p95_compute_ms": float(np.quantile(compute_ms, 0.95)),
                    "total_run_s": time.perf_counter() - started,
                    "scope": "compute = mel/dB/normalization/model; excludes I/O/resampling/postprocessing/waiting/transport"},
         "evaluation": {
@@ -189,7 +203,7 @@ def main():
             "score_alignment": "Use the official 64 ms score bin containing each 50 ms target midpoint",
             "event_matching": "Same class, positive overlap, maximum pair count then IoU; permissive, not collar F1 or PSDS",
             "boundary_mae": "Conditional on overlap-matched pairs; exclude onsets <=0.45 s and offsets >=10 s; unmatched events counted in F1",
-            "limitations": "New 64-recording pilot, not the old validation split. Full future context and full-window normalization. Pretraining-data overlap not audited; not an independent generalization benchmark or causal-vs-bidirectional ablation.",
+            "limitations": "Public synthetic training recordings, not the old validation split. Full future context and full-window normalization. Pretraining-data overlap not audited; not an independent generalization benchmark or causal-vs-bidirectional ablation.",
         }, "results": {},
     }
     class_rows = []
