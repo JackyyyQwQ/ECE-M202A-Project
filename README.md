@@ -28,7 +28,7 @@ budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvemen
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Official pretrained CNN+BiGRU | Both 2019 and 2023 evaluated on 692 real recordings; 2019 reaches 61.90% frame F1 and 28.97% filtered event F1 |
+| Official pretrained CNN+BiGRU | Both evaluated on 692 real recordings; corrected 2023 reaches 70.87% frame F1 and 40.52% event F1; 2019 reproduces its published 29.0% |
 | Bounded-lookahead adaptation, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
@@ -41,14 +41,14 @@ These are preserved preliminary results, not a new run after this reorganization
 
 ## Pretrained baseline progress
 
-The official **2019 CNN+BiGRU** now runs offline on Mac using the author's
+The official **2019 and 2023 CNN+BiGRUs** run offline on Mac using the authors'
 pretrained weights. All **692 real DCASE2019 public evaluation recordings** were
 scored without training or threshold tuning:
 
 | Frozen model, raw output | Frame precision | Frame recall | Frame micro F1 | Event macro F1 |
 |---|---:|---:|---:|---:|
-| 2019 CNN+BiGRU | 69.00% | 56.13% | **61.90%** | **28.37%** |
-| 2023 CNN+BiGRU | 70.67% | 27.13% | 39.20% | 16.55% |
+| 2019 CNN+BiGRU | 69.00% | 56.13% | 61.90% | 28.37% |
+| 2023 CNN+BiGRU | 78.06% | 64.90% | **70.87%** | **40.52%** |
 
 With the official five-frame median filter, the 2019 model reaches **28.97% event
 macro F1**, close to the published **29.0%**. Frontend checks and independent score
@@ -62,9 +62,12 @@ See the [comparison report](docs/dcase2019_model_comparison.md) for sources,
 scoring, reproduction commands and limitations, and the
 [committed score summary](results/public_eval_summary.json) for evidence.
 
-The earlier 2023-model result of 41.10% frame F1 used 2,045 synthetic **training**
-recordings, a different dataset. It is not comparable to the 692-recording real
-public evaluation score. Its raw synthetic audio was subsequently deleted locally.
+The 2023 checkpoint expects per-clip log-mel features scaled to [0, 1], as in its
+2023 training code; the pinned 2024 upstream code scales to [-1, 1], which had
+suppressed detections (39.20% frame F1) in our earlier run. With the training-code
+range it is the stronger model, and its 16 kHz frontend matches the Nano capture
+plan, so it is our reference detector. See the
+[comparison report](docs/dcase2019_model_comparison.md#2023-model-feature-scaling).
 
 The existing 2023 inference entry point remains available with the project conda
 environment active and a local recording of at most ten seconds:

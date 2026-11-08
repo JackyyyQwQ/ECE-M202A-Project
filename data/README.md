@@ -63,6 +63,7 @@ request**, including its ZIP, WAVs, annotations and local manifests under
 `data/raw/dcase2019_validation/` directory were preserved. A directory's existence
 does not establish that validation downloading or evaluation is complete.
 
-The [full report](../docs/pretrained_full_report.md), metrics and filename/hash
-manifests under `results/` preserve the completed experiment. To reproduce it,
-first download the corpus again using the report's commands.
+Filename/hash manifests under `results/` record that corpus. Its 2023-model scores
+(`results/pretrained_pilot_*`, `results/pretrained_full_*`) predate the
+feature-scaling correction and are superseded; to rerun, download the corpus again
+with `scripts/fetch_dcase_pilot.py --all`.

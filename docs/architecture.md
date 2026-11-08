@@ -70,9 +70,10 @@ separate from reporting deadline; waiting also reduces remaining audio history.
 Present: custom causal CNN/GRU and refiner/context-only code. Audio refinement
 has not beaten context-only overall. Separate official 2019/2023 CNN+BiGRUs run
 offline with their own frontends and full future context, not our 32D features.
-On 692 real public evaluation recordings, raw frame F1 is 61.90% (2019) versus
-39.20% (2023). The 2019 model's filtered event F1 is 28.97%, close to the official
-29.0%. This is an offline reference, not the deployed causal path or online latency.
+On 692 real public evaluation recordings, raw frame F1 is 70.87% (2023, with
+feature scaling matched to its training code) versus 61.90% (2019); event macro F1
+is 40.52% versus 28.37%. The 2019 model's filtered 28.97% matches its official 29.0%.
+The 16 kHz 2023 model is the reference detector. This is an offline reference, not the deployed causal path or online latency.
 See [baseline comparison](dcase2019_model_comparison.md) and
 [original feasibility](feasibility.md).
 Bounded-context adaptation, firmware, receiver and controller remain unimplemented.

@@ -99,13 +99,13 @@ learned action selector, conditional on working paths and demonstrated headroom.
 Implemented offline: loaders, causal CNN/GRU, fixed 200 ms audio refinement and
 context-only control. Preliminary audio refinement did not beat context-only
 overall. Seven synthetic correctness checks passed; these do not establish real
-accuracy. A separate official pretrained CNN+BiGRU was subsequently smoke-tested offline
-without training; see [trial](pretrained_baseline.md). It is a candidate baseline
-with its own frontend, not an integrated bounded-lookahead path. A subsequent
-[64-recording pilot](pretrained_evaluation.md) measured 39.72% frame F1; the
-subsequent [full 2,045-recording evaluation](pretrained_full_report.md) measured
-41.10%, still with low recall. Neither reproduces the old validation split or
-establishes independent generalization beyond pretraining data. No online controller or project hardware loop is implemented.
+accuracy. Official pretrained CNN+BiGRUs now run offline without training; see the
+[comparison report](dcase2019_model_comparison.md). The 2019 checkpoint reproduces
+its published public-evaluation score (28.97% vs 29.0% event F1). The 16 kHz 2023
+checkpoint, with feature scaling matched to its training code, is stronger (70.87%
+frame F1, 40.52% event F1) and is the reference detector. Both are candidate baselines
+with their own frontends and full future context, not integrated bounded-lookahead
+paths. No online controller or project hardware loop is implemented.
 See the preserved [feasibility evidence](feasibility.md).
 
 - **Wei:** recover experiment artifacts; improve causal detection; compare

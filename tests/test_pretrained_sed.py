@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from scripts.pretrained_sed import CLASSES, decode_events, frame_intervals
+from scripts.pretrained_sed import CLASSES, decode_events, frame_intervals, normalized_mel
 
 
 class PretrainedExportTests(unittest.TestCase):
@@ -30,6 +30,20 @@ class PretrainedExportTests(unittest.TestCase):
             ("Speech", 0.064, 0.25),
         ])
         self.assertEqual(decode_events(np.zeros_like(scores), starts, ends, 0.5), [])
+
+    def test_features_use_2023_training_range_zero_to_one(self):
+        # Regression: the 2024 upstream scaler returns [-1, 1]; the 2023 checkpoint
+        # was trained on [0, 1]. A [-1, 1] input silently suppresses detections.
+        import torch
+        import torchaudio
+
+        mel = torchaudio.transforms.MelSpectrogram(
+            sample_rate=16000, n_fft=512, hop_length=256, n_mels=16, power=1)
+        generator = torch.Generator().manual_seed(0)
+        audio = 0.1 * torch.randn(1, 16000, generator=generator)
+        features = normalized_mel(audio, mel)
+        self.assertAlmostEqual(features.min().item(), 0.0, places=6)
+        self.assertAlmostEqual(features.max().item(), 1.0, places=5)
 
 
 if __name__ == "__main__":

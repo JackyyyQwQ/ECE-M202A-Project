@@ -1,6 +1,7 @@
 """Offline inference with the official DCASE 2023 CNN+BiGRU student.
 
-Uses upstream model code without training. See docs/pretrained_baseline.md.
+Uses upstream model code without training; feature scaling follows the 2023
+training code (see normalized_mel), not the pinned 2024 scaler.
 This is a full-window reference, not a streaming or deadline-aware detector.
 """
 
@@ -75,13 +76,27 @@ def load_detector(repo, checkpoint):
     return model, mel, config
 
 
+# Commit whose desed_task/utils/scaler.py matches the 2023 checkpoint's training code.
+SCALER_REFERENCE_COMMIT = "9f9b610fbcdca0996ac38dc4b8c2f2e0e18e25f0"
+
+
 def normalized_mel(audio, mel):
-    # Match upstream SEDTask4.take_log and TorchScaler, including the 1e-8 epsilon.
-    features = torchaudio.transforms.AmplitudeToDB(stype="amplitude")(mel(audio))
-    features = features.clamp(min=-50, max=80)
+    """Log-mel features exactly as the 2023 checkpoint was trained on.
+
+    Matches the 2023 recipe's SEDTask4.take_log (amin 1e-5, clamp [-50, 80] dB)
+    and the March 2023 TorchScaler instance-minmax, which maps each clip to
+    [0, 1]. The pinned 2024 upstream checkout (UPSTREAM_COMMIT) later changed
+    that scaler to return `out * 2 - 1`, i.e. [-1, 1]. Using the 2024 range with
+    this 2023 checkpoint shifts every input and suppresses detections, especially
+    of stationary classes (vacuum cleaner, blender, running water). Keep [0, 1]
+    unless the checkpoint changes. See SCALER_REFERENCE_COMMIT.
+    """
+    to_db = torchaudio.transforms.AmplitudeToDB(stype="amplitude")
+    to_db.amin = 1e-5  # As in the recipe; no numeric effect after the -50 dB clamp.
+    features = to_db(mel(audio)).clamp(min=-50, max=80)
     low = features.amin(dim=(1, 2), keepdim=True)
     high = features.amax(dim=(1, 2), keepdim=True)
-    return (features - low) / (high - low + 1e-8) * 2 - 1
+    return (features - low) / (high - low + 1e-8)
 
 
 def frame_intervals(count, step_s, duration_s):

@@ -101,11 +101,13 @@
           </tbody>
         </table>
       </div>
-      <p><strong>Pretrained baseline progress:</strong> both official 2019 and 2023
+      <p><strong>Pretrained baseline progress:</strong> the official 2019 and 2023
         CNN+BiGRUs were evaluated on the same <strong>692 real public evaluation
         recordings</strong>, without training or threshold tuning. Raw frame F1 was
-        <strong>61.90% for 2019</strong> versus <strong>39.20% for 2023</strong>;
-        raw event macro F1 was 28.37% versus 16.55%. With its official five-frame
+        <strong>70.87% for 2023</strong> versus <strong>61.90% for 2019</strong>;
+        raw event macro F1 was 40.52% versus 28.37%. The 2023 model uses feature
+        scaling matched to its training code and the same 16 kHz rate as our capture
+        plan, so it is our reference detector. With its official five-frame
         median filter, the 2019 model reached <strong>28.97% event macro F1</strong>,
         close to the published 29.0%. Frontend and score-counting checks passed.
         These are full-context offline references, not MCU or deadline results.
