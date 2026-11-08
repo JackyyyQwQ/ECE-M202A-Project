@@ -1,8 +1,12 @@
 # Device firmware (Zephyr)
 
 Our Zephyr application for the Nano 33 BLE Sense, developed on `native_sim` first.
-Status: step 1, a minimal app that confirms the toolchain builds and runs our own
-code. The PCM ring buffer, paced replay and request protocol come next.
+Status: step 2. `app/src/pcm_ring.[ch]` is the PCM ring buffer (absolute 64-bit
+sample indices, all-or-nothing requests, chunked transfers that fail with
+`OVERWRITTEN` if a slow link lets the audio expire). It makes no Zephyr calls.
+`app/src/main.c` currently runs a self-test on a synthetic signal (sample i has
+value i mod 65536) and prints `P13 RING TEST PASS`. Replay of real audio, the
+request protocol and the laptop link come next.
 
 ```text
 firmware/
@@ -27,7 +31,7 @@ bash firmware/run sim
 
 `setup` builds the `p13-firmware` image once; it only adds the TFLM module, so it
 is quick. `sim` builds `app/` for `native_sim/native/64` and runs it; expect
-`P13 FIRMWARE OK`. `sim-clean` forces a pristine build. Build files live in the
+`P13 RING TEST PASS`. `sim-clean` forces a pristine build. Build files live in the
 Docker volume `p13-firmware-build`, not in the repository. Runs stop after
 `SIM_TIMEOUT` seconds (default 30).
 
