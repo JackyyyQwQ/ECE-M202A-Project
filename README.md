@@ -28,7 +28,7 @@ budgets? Adaptive selection is a hypothesis to test, not a guaranteed improvemen
 | 200 ms audio refiner and context-only control | Implemented; offline comparison reported |
 | Data preparation, training/evaluation runners, checkpoints | Not included; recover from original experiments |
 | Project Zephyr buffer/replay, deployed encoder, transport | Planned |
-| Official pretrained CNN+BiGRU | Full 2,045-recording DCASE2019 evaluation: frame micro F1 41.10%; no training |
+| Official pretrained CNN+BiGRU | Both 2019 and 2023 evaluated on 692 real recordings; 2019 reaches 61.90% frame F1 and 28.97% filtered event F1 |
 | Bounded-lookahead adaptation, online receiver and controller | Planned; compare paths before selection |
 
 The original November 2 experiment used 128 training and 32 validation recordings
@@ -39,49 +39,43 @@ event detection did not improve. See the [full report](docs/feasibility.md) for
 matching rules, false/missed events, byte costs, sample sizes and limitations.
 These are preserved preliminary results, not a new run after this reorganization.
 
-## Pretrained baseline trial
+## Pretrained baseline progress
 
-A separate official DCASE 2023 CNN+BiGRU student now runs offline on Mac CPU.
-It loads its own CNN, BiGRU and heads; it does not accept our custom 32D features.
-No training was performed. The local environment and weights are already set up.
-With the project conda environment active:
+The official **2019 CNN+BiGRU** now runs offline on Mac using the author's
+pretrained weights. All **692 real DCASE2019 public evaluation recordings** were
+scored without training or threshold tuning:
 
-```bash
-python scripts/pretrained_sed.py data/raw/smoke/panns_example.wav --output output/pretrained_smoke
-```
+| Frozen model, raw output | Frame precision | Frame recall | Frame micro F1 | Event macro F1 |
+|---|---:|---:|---:|---:|
+| 2019 CNN+BiGRU | 69.00% | 56.13% | **61.90%** | **28.37%** |
+| 2023 CNN+BiGRU | 70.67% | 27.13% | 39.20% | 16.55% |
 
-Replace the audio path with a recording of at most 10 seconds. Output includes
-frame scores, decoded events and a timing report. On the initial unlabeled example,
-a 10-second padded input took 30.0 ms median computation on CPU (four threads,
-ten warm runs). This excludes audio waiting/transport and is not end-to-end latency.
-Its output step is 64 ms. A subsequent fixed 64-recording labeled pilot measured
-**39.72% frame micro F1** (precision 82.74%, recall 26.13%) without smoothing or
-threshold tuning. This is a new subset, not the old 32-file validation comparison.
-See [evaluation and reproducible commands](docs/pretrained_evaluation.md).
-See [setup, sources and limitations](docs/pretrained_baseline.md) before reuse.
-A subsequent **full-corpus evaluation** covered all 2,045 recordings (5.68 hours):
-frame micro F1 **41.10%**, precision **84.79%**, recall **27.13%** at the same fixed
-threshold. All original audio is 44.1 kHz mono. Median CPU computation was 28.0 ms
-per 10-second input, excluding audio collection and communication. These public
-synthetic training recordings are not an independent official test set; pretraining
-overlap remains unaudited. This candidate does not replace the causal path.
+With the official five-frame median filter, the 2019 model reaches **28.97% event
+macro F1**, close to the published **29.0%**. Frontend checks and independent score
+recounting passed. This establishes a working offline reference; it does not yet
+implement our MCU encoder, bounded lookahead, refinement or controller.
 
-[Full report](docs/pretrained_full_report.md) · [Three-page PDF](docs/pretrained_full_report.pdf)
+Both models use their own CNN/mel frontend and full future context. They do not
+accept our custom 32D features. The 2019 frontend requires 44.1 kHz; the 2023
+frontend requires 16 kHz. Do not directly move the official CNN onto the Nano.
+See the [comparison report](docs/dcase2019_model_comparison.md) for sources,
+scoring, reproduction commands and limitations, and the
+[committed score summary](results/public_eval_summary.json) for evidence.
 
-The local synthetic training ZIP/WAVs were subsequently deleted at the user's
-request. Reports, evidence and weights remain; rerun the download step below
-before attempting the full evaluation again.
+The earlier 2023-model result of 41.10% frame F1 used 2,045 synthetic **training**
+recordings, a different dataset. It is not comparable to the 692-recording real
+public evaluation score. Its raw synthetic audio was subsequently deleted locally.
+
+The existing 2023 inference entry point remains available with the project conda
+environment active and a local recording of at most ten seconds:
 
 ```bash
-python scripts/fetch_dcase_pilot.py --all
-python -m scripts.evaluate_pretrained --all
+python scripts/pretrained_sed.py /path/to/recording.wav --output output/pretrained_smoke
 ```
 
-Generate the report after installing `requirements-report.txt`:
-
-```bash
-python scripts/report_pretrained.py
-```
+Next, establish a reproducible causal baseline on separate training/validation
+recordings, then compare bounded future context and PCM refinement. Keep the
+public evaluation set fixed; do not tune thresholds or the controller on it.
 
 ## Repository map
 

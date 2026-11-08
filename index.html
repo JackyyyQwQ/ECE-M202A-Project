@@ -101,16 +101,15 @@
           </tbody>
         </table>
       </div>
-      <p><strong>Full pretrained BiGRU evaluation - November 7:</strong> the frozen
-        official CNN+BiGRU was evaluated on all <strong>2,045 DCASE2019 recordings</strong>
-        (5.68 hours), yielding <strong>41.10% frame micro F1</strong>
-        (precision 84.79%, recall 27.13%) at threshold 0.5 without smoothing.
-        Median CPU compute was 28.0 ms per 10-second input, excluding waiting and
-        communication. All original audio is mono, suitable for our single-microphone
-        event-detection setting. This uses public synthetic training recordings and
-        future context; it is not an independent test or the old validation comparison.
-        <a href="docs/pretrained_full_report.pdf">Three-page report (PDF)</a> ·
-        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/pretrained_full_report.md">Methods and evidence</a>.</p>
+      <p><strong>Pretrained baseline progress:</strong> both official 2019 and 2023
+        CNN+BiGRUs were evaluated on the same <strong>692 real public evaluation
+        recordings</strong>, without training or threshold tuning. Raw frame F1 was
+        <strong>61.90% for 2019</strong> versus <strong>39.20% for 2023</strong>;
+        raw event macro F1 was 28.37% versus 16.55%. With its official five-frame
+        median filter, the 2019 model reached <strong>28.97% event macro F1</strong>,
+        close to the published 29.0%. Frontend and score-counting checks passed.
+        These are full-context offline references, not MCU or deadline results.
+        <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/dcase2019_model_comparison.md">Comparison report</a>.</p>
       <p class="small">Course setup checks are separate from project results.
         Native_sim does not measure Nano execution speed, radio performance or energy.
         The original training/evaluation runners and checkpoints are not included yet.</p>
@@ -154,8 +153,8 @@
     <section id="plan">
       <h2>Next steps and evaluation</h2>
       <ol>
-        <li>Recover the original runners, manifests and checkpoints; reproduce and
-          improve the causal baseline.</li>
+        <li>Use the reproduced 2019 detector as an offline reference; recover the
+          original runners and establish a causal baseline on separate training/validation data.</li>
         <li>Compare causal GRU, bounded-window BiGRU, context-only correction and
           PCM refinement with the same encoder and controlled model capacity.</li>
         <li>Implement finite PCM history and USB retrieval; verify overwritten,
@@ -180,8 +179,10 @@
       <h2>Data and references</h2>
       <ul>
         <li><a href="https://zenodo.org/records/2583796">DCASE2019 task 4 synthetic data</a>:
-          ten-second generated soundscapes. The team reports 2,045 recordings;
-          archive contents and original split manifests still need local verification.</li>
+          2,045 synthetic training recordings, separate from the real public evaluation set.
+          Original custom-model split manifests remain unavailable.</li>
+        <li><a href="https://zenodo.org/records/4560759">DCASE2019 public evaluation</a>:
+          692 real recordings used for the frozen-model comparison.</li>
         <li><a href="https://github.com/UCLA-ECEM202A/software/tree/83a3ac6ccf585b2b647d3d6c654b616de8c29cb8/zephyr">Course Zephyr toolchain and examples</a>.</li>
         <li><a href="https://doi.org/10.1016/j.procs.2025.07.180">Compression at the Edge for Energy- and Bandwidth-Efficient Industrial Audio Analysis</a> (2025).
           Evaluate compact audio through downstream quality and communication cost.</li>

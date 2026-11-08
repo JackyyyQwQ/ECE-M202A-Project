@@ -1,0 +1,122 @@
+{
+  "dataset": "DCASE2019 Task4 public evaluation",
+  "source": "https://zenodo.org/records/4560759",
+  "recordings": 692,
+  "annotation_events": 2765,
+  "scored_50ms_frames": 130917,
+  "threshold": 0.5,
+  "training_performed": false,
+  "threshold_tuned": false,
+  "frame_protocol": "50ms intervals from [0.45,0.50)s; any-overlap labels; native prediction bin at midpoint",
+  "event_protocol": "sed_eval optimal matching; onset200ms; offset max(200ms,20% reference duration)",
+  "models": {
+    "2019": {
+      "checkpoint": "dcase2019_t4_mdl",
+      "checkpoint_sha256": "89694e20d9208fae8e49d44f30c9ec1cb5d2129d476967234351049c4ecb01ac",
+      "upstream_commit": "90d35b6191a5d8de05bca816ebc1a836e4a83a00",
+      "results": {
+        "raw": {
+          "frame_micro": {
+            "tp": 65703,
+            "fp": 29512,
+            "fn": 51357,
+            "precision": 0.6900488368429344,
+            "recall": 0.5612762685802153,
+            "f1": 0.6190366270168414
+          },
+          "event_macro_f1": 0.28367134347869555
+        },
+        "median5": {
+          "frame_micro": {
+            "tp": 65628,
+            "fp": 29512,
+            "fn": 51432,
+            "precision": 0.6898044986335926,
+            "recall": 0.560635571501794,
+            "f1": 0.6185485391140434
+          },
+          "event_macro_f1": 0.2897157865248721
+        },
+        "raw_no_known_overlap": {
+          "frame_micro": {
+            "tp": 65294,
+            "fp": 29358,
+            "fn": 51098,
+            "precision": 0.6898322275282086,
+            "recall": 0.5609835727541411,
+            "f1": 0.6187714410265158
+          },
+          "event_macro_f1": 0.2829420813577555
+        },
+        "median5_no_known_overlap": {
+          "frame_micro": {
+            "tp": 65220,
+            "fp": 29358,
+            "fn": 51172,
+            "precision": 0.6895895451373469,
+            "recall": 0.5603477902261323,
+            "f1": 0.6182869602313125
+          },
+          "event_macro_f1": 0.28884853736622684
+        }
+      }
+    },
+    "2023": {
+      "checkpoint": "legacy_epoch=176-step=20886.ckpt",
+      "checkpoint_sha256": "16a7f4cef26265ce68623bc275a0dac0cdac1d0aa72c1ace4d89ff6c4d5fc4ce",
+      "upstream_commit": "c6bcb45b8b986ccde5c56bb86eefaf9d19b2320c",
+      "results": {
+        "raw": {
+          "frame_micro": {
+            "tp": 31753,
+            "fp": 13181,
+            "fn": 85307,
+            "precision": 0.7066586549160991,
+            "recall": 0.27125405774816336,
+            "f1": 0.392026865192538
+          },
+          "event_macro_f1": 0.16554273635074007
+        },
+        "median7": {
+          "frame_micro": {
+            "tp": 31172,
+            "fp": 13118,
+            "fn": 85888,
+            "precision": 0.7038157597651841,
+            "recall": 0.26629079104732617,
+            "f1": 0.3863898357607685
+          },
+          "event_macro_f1": 0.17158885460107556
+        },
+        "raw_no_known_overlap": {
+          "frame_micro": {
+            "tp": 31596,
+            "fp": 13174,
+            "fn": 84796,
+            "precision": 0.7057404511949966,
+            "recall": 0.27146195614818885,
+            "f1": 0.39210235663493875
+          },
+          "event_macro_f1": 0.16540107167113452
+        },
+        "median7_no_known_overlap": {
+          "frame_micro": {
+            "tp": 31012,
+            "fp": 13115,
+            "fn": 85380,
+            "precision": 0.7027896752555125,
+            "recall": 0.26644442917038974,
+            "f1": 0.38639662594459223
+          },
+          "event_macro_f1": 0.17149528926339325
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Offline full-recording future context; not online or MCU results.",
+    "Four known 2019 training-video overlaps; 688-recording sensitivity results do not prove complete training independence.",
+    "Each model uses its required frontend; filtered configurations use different smoothing windows.",
+    "2019 uses modern librosa and retains the full 11s clip rather than historical truncation."
+  ]
+}

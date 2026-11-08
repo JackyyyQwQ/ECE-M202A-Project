@@ -67,13 +67,14 @@ separate from reporting deadline; waiting also reduces remaining audio history.
 
 ## Evidence and next steps
 
-Present: custom causal CNN/GRU, refiner/context-only and correctness checks.
-Audio refinement has not beaten context-only overall. A separate official
-pretrained CNN+BiGRU uses its own CNN/mel, not our 32D features. A full
-2,045-file evaluation measured 41.10% frame F1 and 28.0 ms median CPU compute,
-using full future context. Audio is mono, matching the single onboard microphone.
-This is public training data, not the old split or online latency. See
-[report](pretrained_full_report.md) and [feasibility](feasibility.md).
+Present: custom causal CNN/GRU and refiner/context-only code. Audio refinement
+has not beaten context-only overall. Separate official 2019/2023 CNN+BiGRUs run
+offline with their own frontends and full future context, not our 32D features.
+On 692 real public evaluation recordings, raw frame F1 is 61.90% (2019) versus
+39.20% (2023). The 2019 model's filtered event F1 is 28.97%, close to the official
+29.0%. This is an offline reference, not the deployed causal path or online latency.
+See [baseline comparison](dcase2019_model_comparison.md) and
+[original feasibility](feasibility.md).
 Bounded-context adaptation, firmware, receiver and controller remain unimplemented.
 
 Compare causal, bounded BiGRU, context-only and PCM paths under matched time/byte
