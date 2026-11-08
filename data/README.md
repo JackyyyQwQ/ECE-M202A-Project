@@ -50,21 +50,19 @@ MD5: `06ebea7cc467ace800752bd21ec7178d`.
 Use the source record for citation and license details. Keep audio out of Git.
 
 
-## Downloaded labeled pilot
+## Completed evaluations and local storage
 
-The ZIP directory has now been checked: it lists 2,045 WAV files. A fixed random
-64-file pilot and the complete annotation table are available locally under
-ignored `data/raw/dcase2019/`. These are original WAVs, not the missing original
-processed data/split. Each selected member was size/CRC32 checked. During the initial pilot, the complete
-archive was not downloaded or MD5 verified; the full archive is now verified below. See
-[pilot preparation and evaluation](../docs/pretrained_evaluation.md).
+A fixed 64-file pilot and then all 2,045 synthetic training recordings were
+downloaded and evaluated. The full ZIP passed its published MD5 and extracted
+members passed CRC32. Originals were 44.1 kHz mono, with 6,032 event annotations.
+No original train/validation/test split was recovered or replaced.
 
+**The local synthetic training corpus was subsequently deleted at the user's
+request**, including its ZIP, WAVs, annotations and local manifests under
+`data/raw/dcase2019/`. Model weights, code, report evidence and the separate
+`data/raw/dcase2019_validation/` directory were preserved. A directory's existence
+does not establish that validation downloading or evaluation is complete.
 
-## Full archive available locally
-
-All 2,045 WAVs are now downloaded under `data/raw/dcase2019/wav/` and checked.
-The complete ZIP passed the published MD5; each extracted member passed CRC32.
-All originals are 44.1 kHz mono, with 6,032 event annotations. Full evaluation
-uses `full_manifest.csv` / `full_source.json`; it preserves the 64-file pilot
-manifest. No original train/validation/test split was recovered or replaced.
-See the [full evaluation report](../docs/pretrained_full_report.md).
+The [full report](../docs/pretrained_full_report.md), metrics and filename/hash
+manifests under `results/` preserve the completed experiment. To reproduce it,
+first download the corpus again using the report's commands.

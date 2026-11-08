@@ -68,6 +68,10 @@ overlap remains unaudited. This candidate does not replace the causal path.
 
 [Full report](docs/pretrained_full_report.md) · [Three-page PDF](docs/pretrained_full_report.pdf)
 
+The local synthetic training ZIP/WAVs were subsequently deleted at the user's
+request. Reports, evidence and weights remain; rerun the download step below
+before attempting the full evaluation again.
+
 ```bash
 python scripts/fetch_dcase_pilot.py --all
 python -m scripts.evaluate_pretrained --all
