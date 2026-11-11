@@ -1,6 +1,6 @@
 """Download the real DCASE2019 validation set (1,168 clips) from YouTube.
 
-    python -m pip install -r requirements-download.txt     # yt-dlp; also needs ffmpeg
+    python -m pip install -r requirements.txt     # yt-dlp; also needs ffmpeg
     python scripts/fetch_validation.py                      # resumable; rerun to retry
 
 This is the official DESED procedure: each clip is cut from its YouTube video at
@@ -91,7 +91,7 @@ def main():
     try:
         import yt_dlp  # noqa: F401
     except ImportError:
-        raise SystemExit("yt-dlp not installed: python -m pip install -r requirements-download.txt")
+        raise SystemExit("yt-dlp not installed: python -m pip install -r requirements.txt")
     extra = ["--cookies-from-browser", args.cookies_from_browser] if args.cookies_from_browser else []
 
     with LABELS.open() as handle:

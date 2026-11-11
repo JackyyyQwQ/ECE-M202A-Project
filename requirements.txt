@@ -1,6 +1,19 @@
-# Direct dependencies of the current offline model and dataset definitions.
-# Versions are not yet locked to the original experiment environment.
-torch
-numpy
-pandas
-soundfile
+# All Python dependencies of the project (one environment; see environment.yml).
+# Install: conda env create --prefix ./.conda --file environment.yml
+#     or:  python -m pip install -r requirements.txt
+
+# Pretrained detectors, distillation, REFINE simulation and scoring
+torch==2.11.0
+torchaudio==2.11.0
+numpy>=1.26,<2
+pandas>=2,<3
+soundfile==0.14.0
+scipy==1.17.1
+librosa==0.11.0       # 2019 model frontend
+sed_eval==0.2.1       # event/segment metrics
+
+# int8 TFLite export of the Nano encoder (scripts/export_tflite.py)
+tensorflow==2.18.1
+
+# Validation-set download from YouTube (scripts/fetch_validation.py; also needs ffmpeg)
+yt-dlp==2026.10.26

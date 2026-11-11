@@ -8,5 +8,4 @@ dependencies:
   - python=3.11
   - pip
   - pip:
-      - "pandas>=2,<3"
-      - -r requirements-pretrained.txt
+      - -r requirements.txt

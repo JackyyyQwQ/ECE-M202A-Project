@@ -3,6 +3,8 @@
 #   bash firmware/run setup       build the image once (needs the course base image)
 #   bash firmware/run sim         build and run app/ on native_sim
 #   bash firmware/run sim-clean   same, from a pristine build directory
+#   bash firmware/run probe [model] [arena_kb]        TFLM size probe on native_sim
+#   bash firmware/run probe-nano [model] [arena_kb]   build the probe for the Nano (no flashing); prints FLASH/RAM use
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 IMAGE=p13-firmware
@@ -30,8 +32,22 @@ case "${1:-help}" in
       timeout "$2" /build/sim-app/zephyr/zephyr.exe
     ' sh "$PRISTINE" "$SIM_TIMEOUT"
     ;;
+  probe|probe-nano)
+    MODEL="${2:-ds_w025}"
+    ARENA="${3:-200}"
+    if [[ "$1" == probe ]]; then
+      run_container sh -ec '
+        west build -p always -b native_sim/native/64 /work/tflm_probe -d /build/probe-sim -- -DP13_MODEL="$1" -DP13_ARENA_KB="$2"
+        timeout "$3" /build/probe-sim/zephyr/zephyr.exe
+      ' sh "$MODEL" "$ARENA" "$SIM_TIMEOUT"
+    else
+      run_container sh -ec '
+        west build -p always -b arduino_nano_33_ble/nrf52840/sense /work/tflm_probe -d /build/probe-nano -- -DP13_MODEL="$1" -DP13_ARENA_KB="$2"
+      ' sh "$MODEL" "$ARENA"
+    fi
+    ;;
   *)
-    sed -n '2,5p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,7p' "$0" | sed 's/^# \{0,1\}//'
     exit 2
     ;;
 esac

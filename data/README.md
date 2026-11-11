@@ -68,7 +68,7 @@ train/validation/test split was recovered.
   score frozen configurations; do not tune thresholds, lookahead or the controller on it.
 - **Validation (1,168 recordings, development set):** `python scripts/fetch_validation.py`
   cuts each clip from YouTube at the official start/end times (official DESED
-  procedure; needs `requirements-download.txt` and ffmpeg) into
+  procedure; needs `requirements.txt` and ffmpeg) into
   `data/raw/dcase2019_validation_youtube/`. It is resumable; removed or private
   videos are listed in `missing.tsv` (an earlier redistribution reports ~83%
   coverage). Re-downloaded audio may differ from the organizers' copy; report the

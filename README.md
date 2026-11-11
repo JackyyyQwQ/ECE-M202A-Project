@@ -83,8 +83,9 @@ conda env create --prefix ./.conda --file environment.yml   # once
 conda activate "$PWD/.conda"                                 # every session
 ```
 
-It installs [`requirements-pretrained.txt`](requirements-pretrained.txt) (torch,
-torchaudio, librosa, sed_eval). Data, checkpoints, upstream code and outputs stay
+It installs [`requirements.txt`](requirements.txt), the single dependency list (torch,
+torchaudio, librosa, sed_eval, TensorFlow for the TFLite export, yt-dlp). An existing
+environment is updated with `python -m pip install -r requirements.txt`. Data, checkpoints, upstream code and outputs stay
 in Git-ignored `data/raw/`, `checkpoints/`, `cache/` and `output/`; the
 [detector evaluation](docs/dcase2019_model_comparison.md#evidence-and-reproduction)
 lists how to obtain each.
