@@ -87,7 +87,7 @@
         <table>
           <thead><tr><th scope="col">Component</th><th scope="col">Current status</th></tr></thead>
           <tbody>
-            <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings; no training.</td></tr>
+            <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings, no training: 40.5% event F1 (70.9% frame F1).</td></tr>
             <tr><td>Bounded-lookahead sweep</td><td>Done on 916 validation clips: waiting 0.5 s recovers 57% of the event-F1 gap.</td></tr>
             <tr><td>Compact Nano encoder</td><td>Distilled DS-CNN keeps 98.8% of reference event F1 at 1/7 the MACs; a 56x cheaper int8 version runs in TFLM under native_sim (25.5 KB model, 48 KB arena).</td></tr>
             <tr><td>Controller (simulated)</td><td>Reporting confident frames early cuts mean delay 40-45% at equal event F1; REFINE adds about +0.01 at +8 kB/s.</td></tr>

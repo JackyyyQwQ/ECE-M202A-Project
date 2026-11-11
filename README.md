@@ -26,7 +26,7 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 
 | Component | Status |
 |---|---|
-| Reference detector: official DCASE 2023 CNN+BiGRU (no training) | Done, offline: 70.87% frame F1 on 692 real recordings |
+| Reference detector: official DCASE 2023 CNN+BiGRU (no training) | Done, offline: 40.5% event F1 (70.9% frame F1) on 692 real recordings |
 | Cross-check: official DCASE 2019 CNN+BiGRU | Done: reproduces its published 29.0% event F1 |
 | Bounded-lookahead sweep (wait 0 to 2 s) | Done on 916 validation clips ([results](docs/lookahead_sweep.md)) |
 | Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
@@ -42,17 +42,29 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 Frozen official checkpoints on all 692 real recordings of the DCASE2019 public
 evaluation set, threshold 0.5, no training or tuning, full-clip (offline) context:
 
-| Model | Frame precision | Frame recall | Frame F1 | Event macro F1 |
+| Model | Event F1 (macro) | Frame precision | Frame recall | Frame F1 (micro) |
 |---|---:|---:|---:|---:|
-| 2019 CNN+BiGRU (44.1 kHz) | 69.00% | 56.13% | 61.90% | 28.37% |
-| **2023 CNN+BiGRU (16 kHz)** | 78.06% | 64.90% | **70.87%** | **40.52%** |
+| 2019 CNN+BiGRU (44.1 kHz) | 28.37% | 69.00% | 56.13% | 61.90% |
+| **2023 CNN+BiGRU (16 kHz)** | **40.52%** | 78.06% | 64.90% | **70.87%** |
+
+**Event F1** is the main metric: a predicted event counts only if its onset is within
+200 ms and its offset within max(200 ms, 20% of the event) of the annotation
+(`sed_eval`, the DCASE convention); macro = mean over the 10 classes. **Frame F1** is
+a looser check: each 50 ms frame and class is judged present or absent, pooled over
+classes, so long events dominate and boundary errors cost little. It is not a DCASE
+metric; compare with published work by event F1 (or PSDS). For reference, on this set
+the 2019 challenge winner reached 47.7% event F1
+([DCASE 2019 results](https://dcase.community/challenge2019/task-sound-event-detection-in-domestic-environments-results),
+YouTube subset) and top DCASE 2023 systems with pretrained audio transformers about
+0.69-0.73 collar-based F1 ([Ebbers et al. 2024](https://www.isca-archive.org/interspeech_2024/ebbers24_interspeech.pdf)).
 
 The 2019 model with its median filter gives 28.97% event F1 (published: 29.0%).
 The 2023 model is the reference detector: it is stronger, and its 16 kHz input
 matches the Nano capture rate. Its checkpoint expects features scaled to [0, 1] as
 in its 2023 training code; the newer upstream code uses [-1, 1], which had
 suppressed detections (39.20% frame F1) until fixed. These are offline upper
-references, not online or MCU results. Details, provenance and limitations:
+references, not online or MCU results; later results report event F1 as micro
+(pooled over classes) and macro. Details, provenance and limitations:
 [detector evaluation](docs/dcase2019_model_comparison.md); scores:
 [`results/public_eval_summary.json`](results/public_eval_summary.json).
 
