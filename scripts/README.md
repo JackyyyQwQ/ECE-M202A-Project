@@ -49,5 +49,8 @@ the old feature scaling and were removed.
 |---|---|
 | `distill_cnn.py cache\|train\|eval` | Distil a DS-CNN student from the 2023 reference CNN (BiGRU frozen); `eval` scores it on validation and saves features. Committed students: `models/distill/<run>/` |
 | `refine_sim.py --run <run>` | Fetch PCM chunks around uncertain frames under an uplink budget, recompute them with the reference CNN; uncertainty vs random vs oracle |
+| `export_tflite.py --run <run>` | int8 TFLite export (per-frame 40 mel-frame window), F1 of float/int8 on validation, C header for `firmware/tflm_probe` |
+| `controller_sim.py --run <run>` | Online controller simulation: early report, waiting and REFINE under a deadline and token-bucket budget |
 
-Results and commands: [distillation and REFINE](../docs/distillation_refine.md).
+Results and commands: [distillation, int8 and REFINE](../docs/distillation_refine.md),
+[controller](../docs/controller.md).

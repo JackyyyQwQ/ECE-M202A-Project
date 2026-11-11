@@ -1,0 +1,86 @@
+{
+  "run": "ds_w025",
+  "width": 0.25,
+  "window_mel_frames": 40,
+  "target_frame": 4,
+  "model_bytes": 25504,
+  "ops": [
+    "AVERAGE_POOL_2D",
+    "CONV_2D",
+    "DEPTHWISE_CONV_2D",
+    "MEAN",
+    "PAD"
+  ],
+  "postprocessing": "hysteresis 0.5/0.3",
+  "recordings": 916,
+  "input_quantization": [
+    0.003921568859368563,
+    -128
+  ],
+  "output_quantization": [
+    0.15433689951896667,
+    20
+  ],
+  "results": {
+    "float, whole clip": {
+      "frame_micro": {
+        "tp": 80319,
+        "fp": 36651,
+        "fn": 56899,
+        "precision": 0.6866632469864068,
+        "recall": 0.5853386581935315,
+        "f1": 0.6319653170094576
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2856,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.120303137127871,
+      "event_macro_f1": 0.33860842899317345,
+      "event_micro_f1": 0.38959370483378836,
+      "onset_macro_f1": 0.43176276759341414,
+      "onset_micro_f1": 0.527701943150795,
+      "offset_macro_f1": 0.4646146100881251,
+      "offset_micro_f1": 0.5244901236550507
+    },
+    "float, per frame": {
+      "frame_micro": {
+        "tp": 79872,
+        "fp": 35791,
+        "fn": 57346,
+        "precision": 0.690557913939635,
+        "recall": 0.582081068081447,
+        "f1": 0.6316963314760697
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2887,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.0696036576505734,
+      "event_macro_f1": 0.34287067117912756,
+      "event_micro_f1": 0.3924576542026207,
+      "onset_macro_f1": 0.42750924523568157,
+      "onset_micro_f1": 0.5212527964205816,
+      "offset_macro_f1": 0.47140678865437213,
+      "offset_micro_f1": 0.5314797059763503
+    },
+    "int8 TFLite, per frame": {
+      "frame_micro": {
+        "tp": 79457,
+        "fp": 34930,
+        "fn": 57761,
+        "precision": 0.694633131387308,
+        "recall": 0.579056683525485,
+        "f1": 0.6316011208044355
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2884,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.049387572689737,
+      "event_macro_f1": 0.33665957954309017,
+      "event_micro_f1": 0.3916866506794564,
+      "onset_macro_f1": 0.4215745012074542,
+      "onset_micro_f1": 0.5218225419664269,
+      "offset_macro_f1": 0.4636277147946055,
+      "offset_micro_f1": 0.5291766586730616
+    }
+  }
+}

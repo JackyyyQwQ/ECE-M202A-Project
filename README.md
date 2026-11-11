@@ -5,6 +5,7 @@
 [Project website](https://jackyyyqwq.github.io/ECE-M202A-Project/) ·
 [Proposal](docs/proposal.md) · [Architecture](docs/architecture.md) ·
 [Detector evaluation](docs/dcase2019_model_comparison.md) ·
+[Compact encoder](docs/distillation_refine.md) · [Controller](docs/controller.md) ·
 [Related work](docs/references.md)
 
 ## Overview
@@ -31,8 +32,9 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 | Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
 | Request protocol, laptop link, real-audio replay | Next |
 | Compact MCU encoder (distilled DS-CNN) | Prototype, offline: 98.8% of reference event F1 at 1/7 the MACs ([report](docs/distillation_refine.md)) |
+| Encoder in int8 TFLite Micro | Runs in Zephyr native_sim: 25.5 KB model, 48 KB arena, F1 unchanged; Nano build not yet measured |
 | PCM refinement (REFINE) | Prototype, offline simulation on validation ([report](docs/distillation_refine.md)) |
-| Controller | Planned |
+| Controller (early report / wait / REFINE) | Prototype, simulated online on validation ([report](docs/controller.md)) |
 | Earlier custom CNN + causal GRU and 200 ms refiner | Preliminary feasibility only ([report](docs/feasibility.md)) |
 
 ## Results so far
@@ -68,6 +70,17 @@ MAC/s. A 56x cheaper student reaches 0.390; fetching PCM around its most uncerta
 frames recovers about 1/3 of the gap at +2 kB/s and about 70% at +8 kB/s, above
 random selection with the same budget. Offline, whole-clip normalisation; details:
 [distillation and REFINE](docs/distillation_refine.md).
+
+**int8 on TFLM.** The 56x cheaper student, quantised to int8 and run per 64 ms frame
+(40 mel-frame window), keeps event F1 0.392 vs 0.393 float and runs in TensorFlow
+Lite Micro under Zephyr native_sim with a 25.5 KB model and a 48 KB tensor arena.
+
+**Controller (development set, preliminary).** Simulating the system online with that
+student (features arrive 0.38 s after each frame; REFINE round trip assumed 0.32 s):
+reporting confident frames early cuts mean delay by 40-45% (1.00 -> 0.60 s at a 1 s
+deadline); REFINE adds about +0.01 event F1 at +8 kB/s; policy A at a 2 s deadline
+reaches 0.356 event micro F1 with a 1.01 s mean delay, vs 0.338 for fixed waiting with
+the same mean delay. Details: [controller](docs/controller.md).
 
 The earlier custom pipeline (CNN + causal GRU, 200 ms refiner) is kept as a
 feasibility study: audio refinement did not beat a context-only control
@@ -109,8 +122,8 @@ data/         Data sources, download notes and custom-model loaders
 tests/        Feature range, timestamp export and custom-model checks
 results/      Committed score summaries and small figures
 docs/         Proposal, one-page architecture, evaluations, related work
-firmware/     Zephyr app, toolchain image and launcher (ring buffer done)
-receiver/     Laptop runtime and controller (planned)
+firmware/     Zephyr apps (ring buffer, TFLM size probe), toolchain image and launcher
+receiver/     Laptop runtime (planned; the controller is simulated in scripts/controller_sim.py)
 configs/      Experiment settings (added with working runners)
 index.html    Project website (plain HTML, no build step)
 ```
@@ -136,11 +149,12 @@ radio performance or energy.
 2. **Device path.** Ring buffer done (valid, overwritten, not-yet-recorded,
    wraparound and slow-transfer cases pass in native_sim). Next: native_sim to
    Python link, request protocol and real-audio replay.
-3. **Compact encoder and refinement.** Offline prototypes done
+3. **Compact encoder and refinement.** Offline prototypes and int8 TFLM probe done
    ([report](docs/distillation_refine.md)). Next: online-feasible normalisation,
-   REFINE simulated together with lookahead, int8 export and TFLM memory check.
-4. **Controller.** Compare report / wait / retrieve under matched byte and time
-   budgets; keep a fixed policy if it dominates.
+   Nano FLASH/RAM report and on-device latency.
+4. **Controller.** Policy A simulated on the development set ([report](docs/controller.md)).
+   Next: bootstrap confidence intervals, shorter deadlines, early-report threshold
+   sweep and flip rate, measured BLE round trip; then one run on the public set.
 
 Evaluation rules: tune thresholds, lookahead and controller only on development
 data; score the public evaluation set once per frozen configuration. Count waiting,

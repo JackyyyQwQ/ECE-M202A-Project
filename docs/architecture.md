@@ -1,6 +1,6 @@
 # Architecture
 
-P13 · Junchi Chen & Wei Zhang · Revised November 7, 2026
+P13 · Junchi Chen & Wei Zhang · Revised November 11, 2026
 
 **Goal:** measure when waiting for future features or retrieving buffered audio
 improves on-time event boundaries, then test whether adaptive selection beats
@@ -25,9 +25,11 @@ mic / paced replay -> PCM ring buffer
 ```
 
 **Detector.** The official DCASE 2023 CNN+BiGRU (16 kHz, 128-mel, 64 ms frames)
-is the reference; it runs without training. Its full CNN (~84 M MAC/s, estimated)
-is too large for the Nano's Cortex-M4F, so the Nano will run a compact CNN trained
-to reproduce the reference CNN's 128-D frame features (~2 KB/s at int8). The BiGRU
+is the reference; it runs without training. Its full CNN (70.1 M MAC/s of
+convolutions) is too large for the Nano's Cortex-M4F, so the Nano runs a distilled
+depthwise-separable CNN that reproduces the reference CNN's 128-D frame features
+(~2 KB/s at int8; 1.26 M MAC/s whole-clip, 13.5 M MAC/s per-frame, 25.5 KB int8 model,
+48 KB TFLM arena). The BiGRU
 and output heads are reused unchanged on the laptop.
 
 **Actions.** REPORT uses a window ending at the current frame (no future context).
@@ -63,12 +65,16 @@ On the 692-recording DCASE2019 public evaluation set with full-clip context, the
 offline upper references; see [detector evaluation](dcase2019_model_comparison.md).
 Simulated online on 916 validation clips with causal hysteresis, event F1 (micro)
 is 0.229 at L = 0, 0.339 at 0.5 s, 0.374 at 2 s and 0.422 with the full clip
-([lookahead sweep](lookahead_sweep.md)).
+([lookahead sweep](lookahead_sweep.md)). The distilled encoder keeps 98.8% of that
+full-clip score at 1/7 the MACs; a 56x cheaper int8 version runs in TFLM
+([encoder](distillation_refine.md)). With it, a rule-based controller that reports
+confident frames early, waits otherwise and REFINEs as a last resort cuts mean delay
+by 40-45% at equal or better event F1 ([controller](controller.md)).
 An earlier custom CNN + causal GRU with a 200 ms refiner did not beat a
 context-only control ([feasibility](feasibility.md)).
 
-Next: (1) tune hysteresis and define the deadline on development data; (2) Nano PCM
-buffer and request protocol; (3) compact encoder and REFINE; (4) controller under
-matched byte and time budgets, keeping a fixed path if it dominates. Tune only on
+Next: (1) significance tests and the deadline choice on development data; (2) request
+protocol and laptop link; (3) encoder on the Nano (memory, latency, online
+normalisation); (4) measured link round trip in the controller. Tune only on
 development data; score the public set once per frozen configuration. Minimum
 hardware target: Nano + laptop over USB, with paced replay as microphone fallback.

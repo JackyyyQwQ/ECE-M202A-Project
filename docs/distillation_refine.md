@@ -1,4 +1,4 @@
-# Compact encoder distillation and REFINE simulation
+# Compact encoder: distillation, int8 TFLM and REFINE simulation
 
 November 11, 2026. **Preliminary, offline simulation on the development
 (validation) set.** No training of the BiGRU; the public evaluation set was not used.
@@ -15,6 +15,10 @@ November 11, 2026. **Preliminary, offline simulation on the development
   par with an oracle ranking.
 - The larger student without REFINE (0.417 at 2 kB/s) beats the small student with
   REFINE at 10 kB/s (0.414): REFINE trades uplink bytes for MCU compute.
+- The small student in int8, run per frame, keeps its event F1 (0.392 vs 0.393
+  float) and runs in TensorFlow Lite Micro under Zephyr: 25.5 KB model, 48 KB
+  tensor arena (measured in native_sim).
+- Online use under a deadline is covered by the [controller simulation](controller.md).
 
 ## Setup
 
@@ -85,6 +89,34 @@ An earlier version refined only the selected frame while charging 0.86 s of PCM 
 its receptive field; it recovered little and matched random selection. Recomputing
 whole fetched chunks is what makes REFINE effective.
 
+## int8 TFLite and TensorFlow Lite Micro
+
+`scripts/export_tflite.py` rebuilds the student with TensorFlow ops (BatchNorm folded;
+max |diff| vs PyTorch 4.8e-6), quantises it to full int8 with 500 windows of the
+synthetic training audio, and writes `firmware/tflm_probe/src/model_<run>.h`.
+
+**Per-frame inference.** Each call sees 40 mel frames (0.64 s), covering the student's
+36-frame receptive field, and keeps one 64 ms output frame (mel frames 16-19 of the
+window, so 20 future mel frames = 0.32 s look-ahead). Windows start on multiples of 4
+mel frames, so interior frames equal the whole-clip student. Cost: 0.86 M MAC per call,
+about 13.5 M MAC/s, roughly 10x the whole-clip cost because windows overlap.
+
+| Width 0.25, 916 validation clips, hysteresis | Frame F1 | Event F1 micro | Event F1 macro |
+|---|---:|---:|---:|
+| float, whole clip | 0.632 | 0.390 | 0.339 |
+| float, per frame | 0.632 | 0.393 | 0.343 |
+| int8 TFLite, per frame | 0.632 | 0.392 | 0.337 |
+
+Differences are within noise. Ops: PAD, CONV_2D, DEPTHWISE_CONV_2D, AVERAGE_POOL_2D,
+MEAN. Details: [`results/distill/ds_w025_tflite_eval.json`](../results/distill/ds_w025_tflite_eval.json).
+
+**TFLM probe (Zephyr native_sim).** `firmware/tflm_probe` loads the model, allocates
+the arena and runs one inference: model 25,504 bytes, arena used 48,848 bytes,
+input int8 1x40x128x1, output int8 1x10x1x128, invoke ok. Not yet measured: the Nano
+build's FLASH/RAM report (`bash firmware/run probe-nano ds_w025 64`) and on-device
+latency. Python TFLite and TFLM may differ by +-1 LSB on some outputs; a golden-vector
+test is not yet in place.
+
 ## Limitations
 
 - **Normalisation:** student, teacher and REFINE chunks use whole-clip min/max
@@ -93,8 +125,9 @@ whole fetched chunks is what makes REFINE effective.
   round-trip delay or request overhead. Online, a +-w chunk around frame t is past
   audio once the system has waited L >= w, and still buffered if L + w <= 2 s.
 - **Budget:** allocated per clip with the whole clip in view.
-- **MCU:** float32, non-streaming; int8 quantisation, streaming convolution, RAM and
-  Nano latency are untested.
+- **MCU:** int8 per-frame inference is checked in Python and in native_sim TFLM;
+  the Nano memory report, on-device latency and the mel frontend on the Nano are
+  untested.
 - **Statistics:** one training run per width, no confidence intervals; event F1
   differences below about 0.01 are within noise. Settings were chosen on the
   development set.
@@ -110,6 +143,8 @@ python scripts/distill_cnn.py cache                              # teacher targe
 python scripts/distill_cnn.py train --run ds_w025 --width 0.25   # optional: retrain
 python scripts/distill_cnn.py eval --run ds_w025                 # uses the committed weights if not retrained
 python scripts/refine_sim.py --run ds_w025                       # about 9 min
+python scripts/export_tflite.py --run ds_w025                    # int8 model, three F1s, C header
+bash firmware/run probe ds_w025                                  # TFLM size probe in native_sim
 ```
 
 Committed weights (SHA-256): `ds_mse` 14acdd54ef41c94effd18cc085c964de52ff9eaca753b3e3fa1561609308f610;
@@ -117,6 +152,6 @@ Committed weights (SHA-256): `ds_mse` 14acdd54ef41c94effd18cc085c964de52ff9eaca7
 
 ## Next
 
-Train width 0.5; train the student with an online-feasible normalisation; simulate
-REFINE jointly with lookahead (L >= w, L + w <= 2 s); export int8 TFLite and measure
-memory with TFLM in native_sim; measure BLE throughput.
+Train width 0.5; train the student with an online-feasible normalisation; Nano
+FLASH/RAM report and a golden-vector check; measure BLE throughput. REFINE together
+with lookahead and a deadline is now simulated in the [controller](controller.md).

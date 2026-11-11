@@ -78,7 +78,7 @@
         <li><strong>Laptop:</strong> the official DCASE 2023 BiGRU and output heads,
           reused without training, turn the features into events with onset and offset
           times. The full detector runs offline today.</li>
-        <li><strong>Controller (planned):</strong> for each uncertain boundary choose
+        <li><strong>Controller (simulated):</strong> for each uncertain boundary choose
           REPORT (no future context), LOOKAHEAD (wait a bounded time for later
           features) or REFINE (retrieve buffered PCM before it is overwritten),
           given delay, bytes, buffer expiry and the reporting deadline.</li>
@@ -89,6 +89,8 @@
           <tbody>
             <tr><td>Reference detector (official 2023 CNN+BiGRU)</td><td>Evaluated offline on 692 real recordings; no training.</td></tr>
             <tr><td>Bounded-lookahead sweep</td><td>Done on 916 validation clips: waiting 0.5 s recovers 57% of the event-F1 gap.</td></tr>
+            <tr><td>Compact Nano encoder</td><td>Distilled DS-CNN keeps 98.8% of reference event F1 at 1/7 the MACs; a 56x cheaper int8 version runs in TFLM under native_sim (25.5 KB model, 48 KB arena).</td></tr>
+            <tr><td>Controller (simulated)</td><td>Reporting confident frames early cuts mean delay 40-45% at equal event F1; REFINE adds about +0.01 at +8 kB/s.</td></tr>
             <tr><td>Zephyr native_sim + Python</td><td>Our PCM ring buffer runs in native_sim and passes a 13-case self-test on a synthetic signal; protocol and laptop link next.</td></tr>
             <tr><td>Nano + laptop over USB</td><td>Course microphone firmware compiled locally; project board run not yet verified.</td></tr>
           </tbody>
@@ -160,10 +162,12 @@
           hysteresis there and define the reporting deadline.</li>
         <li><strong>Device path:</strong> the ring buffer is done in native_sim; next are
           sample-index requests over a link to the laptop and real-audio replay.</li>
-        <li><strong>Compact encoder and REFINE:</strong> a small Nano CNN trained to
-          reproduce the reference features; retrieved PCM is re-encoded by the full CNN.</li>
-        <li><strong>Controller:</strong> compare report / wait / retrieve; if one fixed
-          path dominates, simplify and report it.</li>
+        <li><strong>Compact encoder and REFINE:</strong> offline prototypes and an int8
+          TFLM probe are done; next, Nano memory and latency and online normalisation.
+          <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/distillation_refine.md">Report</a>.</li>
+        <li><strong>Controller:</strong> policy A is simulated on development data; next,
+          significance tests, shorter deadlines and a measured link round trip.
+          <a href="https://github.com/JackyyyQwQ/ECE-M202A-Project/blob/feasibility-checkpoint/docs/controller.md">Report</a>.</li>
       </ol>
       <p>Thresholds, lookahead and controller settings are chosen on development data;
         the public evaluation set is scored once per frozen configuration.</p>

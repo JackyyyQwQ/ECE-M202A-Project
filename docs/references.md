@@ -1,6 +1,6 @@
 # Related work and how we build on it
 
-Updated November 7, 2026. The adaptations below are our proposed work, not results
+Updated November 11, 2026. The adaptations below are our proposed work, not results
 established by the cited papers. They do not constitute an exhaustive novelty review.
 
 ## Core related work
@@ -128,23 +128,71 @@ Cloud** — Stefanos Laskaridis et al. (2020), MobiCom.
 - **Experiment:** sweep finite horizons and compare with PCM refinement at similar
   reporting times; control model capacity and prohibit full-recording future access.
 
+## Added November 11, 2026
+
+### 9. Server-driven re-sending of uncertain regions (REFINE)
+
+**Server-Driven Video Streaming for Deep Learning Inference (DDS)** — Kuntai Du et al.
+(2020), SIGCOMM. [Paper](https://kuntaidu.github.io/assets/doc/DDS.pdf)
+
+- **Idea:** the camera streams low-quality video; the server finds low-confidence
+  regions and asks the camera to re-encode only those at high quality.
+- **Build on:** REFINE follows this two-stream design: cheap features by default, raw
+  PCM only around uncertain frames, with early reporting of confident results.
+- **Difference:** we request time segments around event boundaries; the PCM expires in
+  a 2 s MCU buffer, and REFINE competes with waiting for future features.
+
+### 10. Adaptive lookahead per frame
+
+**Lookahead When It Matters: Adaptive Non-causal Transformers for Streaming Neural
+Transducers** — Grant Strimel et al. (2023), ICML.
+[Paper](https://proceedings.mlr.press/v202/strimel23a.html)
+
+- **Idea:** a streaming ASR model decides per frame whether to wait for future frames.
+- **Build on:** our controller waits only for uncertain frames and reports the rest early.
+- **Difference:** rule-based on a frozen detector; waiting also shortens the buffer
+  lifetime of the PCM a REFINE would need.
+
+### 11. Stopping feature transmission when it no longer pays
+
+**Progressive Feature Transmission for Split Inference at the Wireless Edge** — Qiao Lan,
+Qunsong Zeng, Petar Popovski, Deniz Gündüz and Kaibin Huang (2021), arXiv.
+[Paper](https://arxiv.org/abs/2112.07244)
+
+- **Idea:** the server requests more features until the expected uncertainty reduction no
+  longer justifies the communication cost; the optimal policy is a threshold rule.
+- **Build on:** threshold triggers (`m_ref`) under an explicit byte budget.
+
+### 12. Compact encoder and early exit
+
+- **FitNets: Hints for Thin Deep Nets** — Romero et al. (2015), ICLR.
+  [Paper](https://arxiv.org/abs/1412.6550). Student fits a teacher's intermediate
+  features; our DS-CNN fits the reference CNN's 128-D features.
+- **MobileNets** — Howard et al. (2017). [Paper](https://arxiv.org/abs/1704.04861);
+  **Hello Edge: Keyword Spotting on Microcontrollers** — Zhang et al. (2017).
+  [Paper](https://arxiv.org/abs/1711.07128). Depthwise-separable CNNs and the width
+  multiplier; DS-CNN as the standard MCU audio model.
+- **BranchyNet** — Teerapittayanon et al. (2016). [Paper](https://arxiv.org/abs/1709.01686).
+  Confidence-based early exit; our early report applies the idea in time.
+
 ## Proposed synthesis
 
-First improve the causal detector. Then compare REPORT (causal GRU), LOOKAHEAD
-(bounded-window BiGRU), context-only correction and REFINE (requested PCM).
-Use the same encoder initially, identical splits, matched reporting budgets and
-explicit byte accounting. Determine whether different paths help different cases;
-an offline oracle can measure selection headroom but cannot act as the online policy.
+Status (November 11): the reference detector is the official DCASE 2023 CNN+BiGRU,
+used without training; the Nano runs a distilled DS-CNN that reproduces its CNN
+features; the BiGRU stays unchanged on the laptop. Offline prototypes of the encoder,
+REFINE and a rule-based controller are done ([encoder](distillation_refine.md),
+[controller](controller.md)).
 
-Only then test a simple controller using pre-action uncertainty, resource estimates,
-buffer availability and remaining reporting time. Ground truth cannot choose online
-actions; post-retrieval support is not a free selection signal. Compare against
-fixed paths, uncertainty-only and deadline-aware selection under the same traces.
+The controller compares REPORT (report a frame as soon as it is confident), LOOKAHEAD
+(wait for more features, up to a deadline) and REFINE (fetch the buffered PCM around an
+uncertain frame and recompute its features with the reference CNN), under a deadline,
+a 2 s MCU buffer and a link budget. Baselines: fixed waiting, uncertainty-only REFINE,
+random selection and an offline oracle, all with the same budgets. Tune only on the
+development set; score the public set once.
 
 Our proposed contribution is an empirical study of **waiting for future features
 versus retrieving expiring historical audio** for timely event boundaries on an
-MCU/laptop system. This combination is a research hypothesis, not a verified claim
-of being first. Current audio refinement has not beaten context-only overall; if
-one fixed path dominates, report that result and simplify the system.
+MCU/laptop system. This combination is a research hypothesis, not a verified claim of
+being first. If one fixed path dominates, report that result and simplify the system.
 See [proposal](proposal.md), [architecture](architecture.md) and
 [feasibility evidence](feasibility.md).

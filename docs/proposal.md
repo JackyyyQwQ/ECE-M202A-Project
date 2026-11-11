@@ -20,7 +20,7 @@ selection around a fixed detector, not a new neural network.
 
 ## Motivation and starting points
 
-The Nano cannot run the full detector (its CNN needs an estimated ~84 M MAC/s),
+The Nano cannot run the full detector (its CNN needs 70.1 M MAC/s of convolutions, measured),
 and streaming raw 16 kHz PCM costs 32 KB/s. Sending compact features saves
 bandwidth but may lose boundary detail; waiting supplies future context; retrieving
 PCM restores acoustic detail. Both consume reporting time, and waiting also ages
