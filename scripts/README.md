@@ -42,3 +42,12 @@ source for training the compact Nano encoder; its earlier 2023-model scores used
 the old feature scaling and were removed.
 
 `scoring.py` holds the shared 50 ms frame-target and precision/recall/F1 helpers.
+
+## Compact encoder and REFINE (offline prototypes)
+
+| Script | Purpose |
+|---|---|
+| `distill_cnn.py cache\|train\|eval` | Distil a DS-CNN student from the 2023 reference CNN (BiGRU frozen); `eval` scores it on validation and saves features. Committed students: `models/distill/<run>/` |
+| `refine_sim.py --run <run>` | Fetch PCM chunks around uncertain frames under an uplink budget, recompute them with the reference CNN; uncertainty vs random vs oracle |
+
+Results and commands: [distillation and REFINE](../docs/distillation_refine.md).

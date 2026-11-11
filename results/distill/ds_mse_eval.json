@@ -1,0 +1,125 @@
+{
+  "recordings": 916,
+  "results": {
+    "teacher | threshold 0.5": {
+      "frame_micro": {
+        "tp": 88673,
+        "fp": 25641,
+        "fn": 48545,
+        "precision": 0.77569676505065,
+        "recall": 0.6462198836887288,
+        "f1": 0.7050633716584769
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3368,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.7615344418052283,
+      "event_macro_f1": 0.3651769574258957,
+      "event_micro_f1": 0.41222733343226,
+      "onset_macro_f1": 0.4817331762091303,
+      "onset_micro_f1": 0.5552752633921948,
+      "offset_macro_f1": 0.49681172448748506,
+      "offset_micro_f1": 0.5520106840777563
+    },
+    "teacher | hysteresis 0.5/0.3": {
+      "frame_micro": {
+        "tp": 92038,
+        "fp": 30208,
+        "fn": 45180,
+        "precision": 0.7528917101582056,
+        "recall": 0.6707429054497224,
+        "f1": 0.7094471680078932
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2954,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.144774542992554,
+      "event_macro_f1": 0.4051968528811593,
+      "event_micro_f1": 0.42181818181818176,
+      "onset_macro_f1": 0.5129242010465651,
+      "onset_micro_f1": 0.5650592885375494,
+      "offset_macro_f1": 0.5410454648984593,
+      "offset_micro_f1": 0.5647430830039526
+    },
+    "teacher | causal mean (3 frames)": {
+      "frame_micro": {
+        "tp": 88564,
+        "fp": 25759,
+        "fn": 48654,
+        "precision": 0.7746822599127035,
+        "recall": 0.645425527263187,
+        "f1": 0.704171486954413
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3123,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.8990714056996496,
+      "event_macro_f1": 0.3750089039586561,
+      "event_micro_f1": 0.4173082845703727,
+      "onset_macro_f1": 0.4839628462442748,
+      "onset_micro_f1": 0.5632891900215583,
+      "offset_macro_f1": 0.5074335873770408,
+      "offset_micro_f1": 0.5515860794579611
+    },
+    "student | threshold 0.5": {
+      "frame_micro": {
+        "tp": 85387,
+        "fp": 24854,
+        "fn": 51831,
+        "precision": 0.7745484892190746,
+        "recall": 0.6222725881444126,
+        "f1": 0.6901102808950169
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3209,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.7825814895606136,
+      "event_macro_f1": 0.34696984089655275,
+      "event_micro_f1": 0.4060790273556232,
+      "onset_macro_f1": 0.4636188780650685,
+      "onset_micro_f1": 0.5522796352583587,
+      "offset_macro_f1": 0.47241135894149355,
+      "offset_micro_f1": 0.5401215805471125
+    },
+    "student | hysteresis 0.5/0.3": {
+      "frame_micro": {
+        "tp": 88736,
+        "fp": 29373,
+        "fn": 48482,
+        "precision": 0.7513059970027687,
+        "recall": 0.6466790071273448,
+        "f1": 0.6950772930399057
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2812,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.1768819345661465,
+      "event_macro_f1": 0.39085962504932165,
+      "event_micro_f1": 0.4166262332201197,
+      "onset_macro_f1": 0.49245936194207546,
+      "onset_micro_f1": 0.5592754326378779,
+      "offset_macro_f1": 0.520150703196818,
+      "offset_micro_f1": 0.5566876920588711
+    },
+    "student | causal mean (3 frames)": {
+      "frame_micro": {
+        "tp": 85209,
+        "fp": 24986,
+        "fn": 52009,
+        "precision": 0.7732564998411906,
+        "recall": 0.6209753822384818,
+        "f1": 0.6887996992882347
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2981,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.9170103991949043,
+      "event_macro_f1": 0.3544755160939129,
+      "event_micro_f1": 0.4027078085642317,
+      "onset_macro_f1": 0.46150781016022246,
+      "onset_micro_f1": 0.5472292191435768,
+      "offset_macro_f1": 0.4822360489119151,
+      "offset_micro_f1": 0.5409319899244333
+    }
+  }
+}

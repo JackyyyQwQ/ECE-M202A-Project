@@ -30,7 +30,9 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 | Bounded-lookahead sweep (wait 0 to 2 s) | Done on 916 validation clips ([results](docs/lookahead_sweep.md)) |
 | Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
 | Request protocol, laptop link, real-audio replay | Next |
-| Compact MCU encoder, PCM refinement, controller | Planned |
+| Compact MCU encoder (distilled DS-CNN) | Prototype, offline: 98.8% of reference event F1 at 1/7 the MACs ([report](docs/distillation_refine.md)) |
+| PCM refinement (REFINE) | Prototype, offline simulation on validation ([report](docs/distillation_refine.md)) |
+| Controller | Planned |
 | Earlier custom CNN + causal GRU and 200 ms refiner | Preliminary feasibility only ([report](docs/feasibility.md)) |
 
 ## Results so far
@@ -59,6 +61,13 @@ clip: the first 0.5 s recovers 57% of the gap, with sharply diminishing returns.
 Waiting mainly repairs fragmented events and their boundaries; frame F1 changes
 little. Full-clip results match the official score on this set, confirming the
 re-downloaded audio. Details: [lookahead sweep](docs/lookahead_sweep.md).
+
+**Compact encoder and REFINE (development set, preliminary).** A distilled
+depthwise-separable CNN keeps event F1 (micro) at 0.417 vs 0.422 with 9.6 vs 70.1 M
+MAC/s. A 56x cheaper student reaches 0.390; fetching PCM around its most uncertain
+frames recovers about 1/3 of the gap at +2 kB/s and about 70% at +8 kB/s, above
+random selection with the same budget. Offline, whole-clip normalisation; details:
+[distillation and REFINE](docs/distillation_refine.md).
 
 The earlier custom pipeline (CNN + causal GRU, 200 ms refiner) is kept as a
 feasibility study: audio refinement did not beat a context-only control
@@ -94,7 +103,7 @@ python scripts/pretrained_sed.py recording.wav --output output/one_file   # one 
 
 ```text
 scripts/      Detector loaders, public evaluation, downloads (see scripts/README.md)
-models/       Earlier custom CNN/GRU and boundary refiner
+models/       Earlier custom CNN/GRU and refiner; distilled students in models/distill/
 data/         Data sources, download notes and custom-model loaders
 tests/        Feature range, timestamp export and custom-model checks
 results/      Committed score summaries and small figures
@@ -126,9 +135,9 @@ radio performance or energy.
 2. **Device path.** Ring buffer done (valid, overwritten, not-yet-recorded,
    wraparound and slow-transfer cases pass in native_sim). Next: native_sim to
    Python link, request protocol and real-audio replay.
-3. **Compact encoder and refinement.** A small CNN on the Nano trained to reproduce
-   the reference CNN's features (the BiGRU is reused unchanged); retrieved PCM is
-   re-encoded by the full CNN on the laptop.
+3. **Compact encoder and refinement.** Offline prototypes done
+   ([report](docs/distillation_refine.md)). Next: online-feasible normalisation,
+   REFINE simulated together with lookahead, int8 export and TFLM memory check.
 4. **Controller.** Compare report / wait / retrieve under matched byte and time
    budgets; keep a fixed policy if it dominates.
 
