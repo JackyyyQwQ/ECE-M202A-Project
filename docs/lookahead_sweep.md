@@ -6,6 +6,13 @@ event-F1 gap between reporting immediately and seeing the whole clip; 2 s
 recovers 75% (micro) or 60% (class-macro). These are development-set results
 with full-CNN features, i.e. lookahead with no compression loss.
 
+**Update (November 11).** This sweep reruns the whole CRNN on the audio prefix, so the
+CNN features of the newest frames also improve as L grows; a deployed Nano cannot
+recompute past features. Under the system's protocol (the CNN waits about 0.32 s for its
+receptive field, the BiGRU then waits L), 0.5 s of lookahead recovers 57% of the gap
+with the full CNN and 48% with the compact CNN; see
+[controller: lookahead with the compact CNN](controller.md#lookahead-with-the-compact-cnn).
+
 ## Setup
 
 - **Data:** 916 of 1168 real DCASE2019 validation clips

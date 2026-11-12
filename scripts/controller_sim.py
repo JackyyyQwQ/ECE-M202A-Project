@@ -26,6 +26,14 @@ the token bucket refills at the budget rate across the whole stream of clips.
     python scripts/controller_sim.py --run ds_w025 --limit 20   # quick check
     python scripts/controller_sim.py --run ds_w025
 
+Pure-waiting sweep (no early report, no REFINE), the same protocol for both CNNs:
+    python scripts/controller_sim.py --run ds_w025 --features student --lookaheads 0,0.128,0.256,0.512,1.024,2.048
+    python scripts/controller_sim.py --run ds_w025 --features teacher --lookaheads 0,0.128,0.256,0.512,1.024,2.048
+Both CNNs then see their own receptive-field future inside the feature (0.32-0.4 s);
+L is the extra future the BiGRU sees. With --features student-causal / teacher-causal the
+CNN does not wait (future audio zero-padded), features arrive 64 ms after the frame, and
+L = 0 matches the earlier lookahead sweep's L = 0 (delay L + 64 ms).
+
 Sanity row: "student, whole clip" must equal the student's full-clip score (0.390 event
 micro F1 for ds_w025); --sanity-refine adds "refine everything", which should approach
 the teacher (0.422). Optimistic as before: whole-clip [0, 1]
@@ -42,7 +50,7 @@ import numpy as np
 import torch
 from torch.nn.utils.rnn import pack_sequence, pad_packed_sequence
 
-from distill_cnn import CACHE, OUT, ROOT, annotations, cnn_input, load_teacher
+from distill_cnn import CACHE, OUT, RELEASED, ROOT, Student, annotations, cnn_input, load_teacher
 from lookahead_sweep import POSTPROCESSING, score
 
 FRAME_S = 0.064
@@ -60,6 +68,29 @@ def prefix_table(model, feats, ks):
         out, _ = model.rnn.rnn(pack_sequence([f[:k] for k in ks], enforce_sorted=False))
         out, _ = pad_packed_sequence(out, batch_first=True)
         return torch.sigmoid(model.dense(out)).numpy()
+
+
+CAUSAL_HISTORY = {"student": 9, "teacher": 12}   # past output frames covering each CNN's receptive field
+
+
+def causal_features(cnn, mel, frames, history):
+    """Features computed without waiting for future audio: frame t is the LAST frame of a
+    window of mel frames [4 (t - history), 4 (t + 1)); later audio is zero-padded by the CNN."""
+    width = 4 * (history + 1)
+    pad = np.zeros((128, 4 * history + mel.shape[1]), np.float32)
+    pad[:, 4 * history:] = mel
+    x = np.stack([pad[:, 4 * t:4 * t + width] for t in range(frames)])      # [frames, 128, width]
+    with torch.inference_mode():
+        out = cnn(cnn_input(torch.from_numpy(x)))                            # [frames, width/4, 128]
+    return out[:, history].numpy()
+
+
+def load_student(run):
+    source = OUT / run if (OUT / run / "student.pt").exists() else RELEASED / run
+    width = json.loads((source / "train.json").read_text())["args"]["width"]
+    student = Student(width)
+    student.load_state_dict(torch.load(source / "student.pt", map_location="cpu", weights_only=True))
+    return student.eval()
 
 
 def chunk_features(model, mel, a, b):
@@ -169,6 +200,12 @@ def simulate_clip(c, model, cfg, bucket, offset):
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--run", default="ds_w025")
+    parser.add_argument("--features", choices=["student", "teacher", "student-causal", "teacher-causal"],
+                        default="student",
+                        help="which CNN feeds the BiGRU (teacher = reference CNN). '-causal': the CNN does "
+                             "not wait for future audio (zero-padded), so features arrive 64 ms after the frame")
+    parser.add_argument("--lookaheads", help="pure-waiting sweep instead of the policy grid: BiGRU "
+                        "lookahead L in seconds beyond feature arrival, comma-separated (D = 0.384 + L)")
     parser.add_argument("--deadlines", default="1,1.5,2", help="D, seconds after the frame ends")
     parser.add_argument("--budgets", default="0,2,4,8", help="extra uplink for PCM, kB/s")
     parser.add_argument("--m-report", default="0.3,inf", help="early-report margins (inf = never early)")
@@ -185,8 +222,10 @@ def main():
     names = [str(n) for n in data["names"]]
     frames = data["frames"]
     split = lambda a: np.split(a, np.cumsum(frames)[:-1])
-    student = split(data["student_feats"].astype(np.float32))
-    student_scores = split(data["student_scores"])
+    global AVAIL
+    base, causal = args.features.split("-")[0], args.features.endswith("-causal")
+    student = split(data[f"{base}_feats"].astype(np.float32))
+    student_scores = split(data[f"{base}_scores"])
     cache = dict(np.load(CACHE / "validation.npz"))
     usable = dict(zip(names, cache["usable"].tolist()))
     durations = dict(zip(names, cache["durations"].tolist()))
@@ -194,6 +233,14 @@ def main():
         names = names[:args.limit]
     events = annotations()
     model, _ = load_teacher()
+    if causal:   # recompute features without future audio; usable one tick after the frame ends
+        AVAIL = 2
+        cnn = load_student(args.run) if base == "student" else (
+            lambda x: model.cnn(x).squeeze(-1).permute(0, 2, 1))
+        print(f"computing causal {base} features ...", flush=True)
+        for i in range(len(names)):
+            mel = cache["mel"][i, :, :cache["mel_frames"][i]].astype(np.float32)
+            student[i] = causal_features(cnn, mel, len(student[i]), CAUSAL_HISTORY[base])
     decide = POSTPROCESSING["hysteresis 0.5/0.3"]
 
     print(f"{len(names)} validation recordings: building BiGRU prefix tables ...", flush=True)
@@ -203,7 +250,7 @@ def main():
         f = student[i]
         T = len(f)
         table = prefix_table(model, f, list(range(1, T + 1))).astype(np.float16)
-        if i == 0:   # full prefix must equal the whole-clip student scores
+        if i == 0 and not causal:   # full prefix must equal the whole-clip scores
             diff = float(np.abs(table[T - 1].astype(np.float32) - student_scores[0]).max())
             assert diff < 2e-3, f"prefix table differs from the whole-clip BiGRU by {diff}"
         clips.append({"name": n, "T": T, "student": f, "table": table,
@@ -242,7 +289,21 @@ def main():
         return row
 
     inf = float("inf")
-    rows = [run("sanity: student, whole clip", 1e6, 0, inf, 0.0)]
+    rows = [run(f"sanity: {args.features}, whole clip", 1e6, 0, inf, 0.0)]
+    if args.lookaheads:   # pure waiting: no early report, no REFINE
+        for L in [float(x) for x in args.lookaheads.split(",")]:
+            D = (AVAIL - 1 + round(L / FRAME_S)) * FRAME_S        # whole ticks after feature arrival
+            row = run(f"{args.features} fixed waiting, BiGRU lookahead L={L:g}s", D, 0, inf, 0.0)
+            row["lookahead_s"] = L
+            rows.append(row)
+        out = ROOT / "output/controller" / args.run
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"lookahead_{args.features}.json"
+        path.write_text(json.dumps({"run": args.run, "features": args.features, "recordings": len(clips),
+                                    "feature_avail_s": (AVAIL - 1) * FRAME_S, "rows": rows},
+                                   indent=2, default=float) + "\n")
+        print(f"Saved {path}")
+        return
     if args.sanity_refine:
         rows.append(run("sanity: refine everything (D long)", 1e6, 1e6, inf, 1.0))
     for D in [float(x) for x in args.deadlines.split(",")]:

@@ -85,6 +85,44 @@ Reference points: whole-clip student 0.390 / 0.339; whole-clip teacher 0.422 / 0
   differences between policies on the same clips are smaller (estimated +-0.005, not
   yet measured).
 
+## Lookahead with the compact CNN
+
+Pure waiting (no early report, no REFINE), the same protocol for both CNNs:
+`controller_sim.py --features {student,teacher} --lookaheads ...`. Each CNN waits for
+its receptive field (about 0.32 s of future audio) before computing a frame, so features
+arrive 0.384 s after the frame; L is the extra future the BiGRU sees. Event F1 micro /
+macro:
+
+| BiGRU lookahead L | 0 | 0.128 s | 0.256 s | 0.512 s | 1.024 s | 2.048 s | whole clip |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| mean delay | 0.38 s | 0.51 s | 0.64 s | 0.88 s | 1.35 s | 2.21 s | — |
+| teacher (reference CNN) | 0.307 / 0.217 | 0.332 / 0.233 | 0.351 / 0.249 | 0.373 / 0.278 | 0.382 / 0.298 | 0.398 / 0.337 | 0.422 / 0.405 |
+| student (width 0.25) | 0.276 / 0.166 | 0.307 / 0.189 | 0.318 / 0.199 | 0.331 / 0.216 | 0.338 / 0.235 | 0.352 / 0.259 | 0.390 / 0.339 |
+
+Share of the L = 0 to whole-clip gap (micro) recovered by 0.5 s / 2 s of lookahead:
+teacher 57% / 79%, student 48% / 66%. **Waiting keeps its value with the compact CNN**,
+with the same diminishing-returns shape.
+
+**The CNN must wait for its receptive field.** With `--features student-causal` /
+`teacher-causal` each frame's feature is computed as soon as the frame ends, with the
+future zero-padded, and never recomputed (features arrive after 64 ms). Then even the
+whole clip gives only 0.195 (student) / 0.244 (teacher) micro F1, and waiting barely
+helps (student 0.121 at L = 0 to 0.180 at 2 s): every feature is computed against a
+zero-padded edge the model never saw in training. At about the same delay, waiting
+0.32 s inside the CNN is far better (student 0.276 at 0.38 s vs 0.174 at 0.56 s).
+
+**Relation to the earlier [lookahead sweep](lookahead_sweep.md).** That sweep reran the
+whole CRNN on the audio prefix for every frame, so all past features were recomputed
+from real audio and only frames within about 0.4 s of the cut were degraded. Its gain
+from L = 0 to 0.5 s therefore includes the CNN features of the newest frames escaping
+the zero-padded edge, which our system cannot do (the laptop has no audio to recompute
+from). The curves above match the system design. How much of the remaining BiGRU gain
+comes from real future content versus moving the BiGRU's own sequence edge away from the
+reported frame is not yet separated (planned: replace the future with uninformative
+features at the same distance).
+
+Results: `results/controller/ds_w025_lookahead_{student,teacher,student-causal,teacher-causal}.json`.
+
 ## Limitations
 
 - Offline replay; whole-clip [0, 1] normalisation; float student features (int8
@@ -106,6 +144,6 @@ python scripts/controller_sim.py --run ds_w025              # all 916 clips, ~10
 
 ## Next
 
-Bootstrap confidence intervals for policy differences; shorter deadlines
-(D = 0.45 / 0.6 / 0.75 s); sweep `m_rep` and measure the early-report flip rate; plot
+Bootstrap confidence intervals for policy differences; the fake-future control for the
+BiGRU edge effect; sweep `m_rep` and measure the early-report flip rate; plot
 mean delay vs event F1; replace R with a measured BLE round trip.

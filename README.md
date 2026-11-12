@@ -74,7 +74,10 @@ immediately, 0.339 after waiting 0.5 s, 0.374 after 2 s and 0.422 with the whole
 clip: the first 0.5 s recovers 57% of the gap, with sharply diminishing returns.
 Waiting mainly repairs fragmented events and their boundaries; frame F1 changes
 little. Full-clip results match the official score on this set, confirming the
-re-downloaded audio. Details: [lookahead sweep](docs/lookahead_sweep.md).
+re-downloaded audio. Details: [lookahead sweep](docs/lookahead_sweep.md). Under the
+deployed protocol (the CNN first waits 0.32 s for its receptive field), 0.5 s of BiGRU
+lookahead recovers 57% of the gap with the full CNN and 48% with the compact CNN
+([details](docs/controller.md#lookahead-with-the-compact-cnn)).
 
 **Compact encoder and REFINE (development set, preliminary).** A distilled
 depthwise-separable CNN keeps event F1 (micro) at 0.417 vs 0.422 with 9.6 vs 70.1 M
