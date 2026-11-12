@@ -8,6 +8,14 @@ the official BiGRU + heads stay frozen and unchanged. No labels are used for tra
     python scripts/distill_cnn.py train --run ds_out --output-weight 1
     python scripts/distill_cnn.py eval --run ds_mse           # Event F1 on validation
 
+Online-feasible input normalisation for the student (the teacher keeps its whole-clip one):
+    python scripts/distill_cnn.py cache-db                     # raw log-mel dB (once)
+    python scripts/distill_cnn.py train --run ds_w025_fixed --width 0.25 --norm fixed
+    python scripts/distill_cnn.py eval --run ds_w025_fixed
+--norm: clip (default, whole-clip min-max, not online), fixed ((dB + 50) / 130),
+window (causal min-max over the last --norm-seconds), ema (causal per-band mean/std,
+time constant --norm-seconds, started from training-set statistics).
+
 Committed students (no retraining needed): models/distill/{ds_mse, ds_w025}/. `eval`
 uses output/distill/<run>/student.pt when present, otherwise the committed copy.
 
@@ -121,6 +129,81 @@ def macs_per_second(module, x):
     return total[0] / seconds
 
 
+# ---------------------------------------------------------------- input normalisation
+MEL_FRAME_S = 256 / RATE
+
+
+def db_mel(audio, mel):
+    """Log-mel in dB, clamped to [-50, 80] as in the recipe, before any scaling: [B, 128, T]."""
+    to_db = torchaudio.transforms.AmplitudeToDB(stype="amplitude")
+    to_db.amin = 1e-5
+    return to_db(mel(audio)).clamp(min=-50, max=80)
+
+
+def normalise(db, kind, seconds=4.0, stats=None):
+    """Scale one clip's dB log-mel [128, T] for the student. Every option except 'clip' is causal."""
+    db = db.astype(np.float32)
+    if kind == "clip":                                   # whole clip: needs the future
+        return (db - db.min()) / (db.max() - db.min() + 1e-8)
+    if kind == "fixed":
+        return (db + 50.0) / 130.0
+    if kind == "window":                                 # min/max over the last `seconds`, all bands
+        w = max(1, int(round(seconds / MEL_FRAME_S)))
+        lo_t, hi_t = db.min(axis=0), db.max(axis=0)
+        lo = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, np.inf), lo_t], w).min(axis=1)
+        hi = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, -np.inf), hi_t], w).max(axis=1)
+        return (db - lo) / (hi - lo + 1e-8)
+    if kind == "ema":                                    # per-band running mean/variance
+        from scipy.signal import lfilter
+        a = MEL_FRAME_S / seconds
+        mean0, var0 = stats["mean"][:, None], stats["var"][:, None]
+        m = lfilter([a], [1, a - 1], db, axis=1, zi=(1 - a) * mean0)[0]
+        sq = lfilter([a], [1, a - 1], db ** 2, axis=1, zi=(1 - a) * (var0 + mean0 ** 2))[0]
+        return (db - m) / np.sqrt(np.maximum(sq - m ** 2, 1.0)) * 0.25 + 0.5
+    raise ValueError(kind)
+
+
+def normalised_inputs(dbs, frames, kind, seconds):
+    """Normalise every cached clip; dbs [N, 128, T] (padded), frames = valid lengths."""
+    stats = dict(np.load(CACHE / "db_stats.npz")) if kind == "ema" else None
+    out = np.zeros(dbs.shape, np.float16)
+    for i, n in enumerate(frames):
+        out[i, :, :n] = normalise(dbs[i, :, :n], kind, seconds, stats)
+    return out
+
+
+def cache_db(args):
+    """Raw dB log-mel for the synthetic and validation audio, and training-set band statistics."""
+    _, mel = load_teacher()
+    resamplers = {}
+    with torch.inference_mode():
+        names = sorted(p.name for p in (SYNTH / "wav").glob("*.wav"))
+        out = []
+        for i in range(0, len(names), args.batch):
+            waves = []
+            for n in names[i:i + args.batch]:
+                w, _ = read_wave(SYNTH / "wav" / n, resamplers)
+                waves.append(F.pad(w, (0, max(0, CLIP - len(w))))[:CLIP])
+            out.append(db_mel(torch.stack(waves), mel).half())
+        synth = torch.cat(out).numpy()
+        assert list(np.load(CACHE / "synthetic.npz")["names"]) == names
+        np.savez(CACHE / "synthetic_db.npz", db=synth)
+        flat = synth.astype(np.float32).transpose(1, 0, 2).reshape(128, -1)
+        np.savez(CACHE / "db_stats.npz", mean=flat.mean(axis=1), var=flat.var(axis=1))
+        print(f"synthetic: {len(names)} clips", flush=True)
+
+        valid = dict(np.load(CACHE / "validation.npz"))
+        names = [str(n) for n in valid["names"]]
+        db = np.zeros(valid["mel"].shape, np.float16)
+        for k, n in enumerate(names):
+            w, _ = read_wave(VALID / "wav" / n, resamplers)
+            d = db_mel(w[None], mel)[0].numpy()
+            assert d.shape[1] == valid["mel_frames"][k]
+            db[k, :, :d.shape[1]] = d
+        np.savez(CACHE / "validation_db.npz", db=db)
+    print(f"Saved {CACHE}/synthetic_db.npz, validation_db.npz, db_stats.npz")
+
+
 # ---------------------------------------------------------------- data
 def annotations():
     events = defaultdict(list)
@@ -186,7 +269,12 @@ def pick_device(name):
 def train(args):
     device = pick_device(args.device)
     data = np.load(CACHE / "synthetic.npz")
-    mel = torch.from_numpy(data["mel"])
+    if args.norm == "clip":
+        mel = torch.from_numpy(data["mel"])
+    else:   # student input with an online-feasible normalisation; teacher targets unchanged
+        dbs = np.load(CACHE / "synthetic_db.npz")["db"]
+        mel = torch.from_numpy(normalised_inputs(dbs, [dbs.shape[2]] * len(dbs), args.norm, args.norm_seconds))
+        print(f"student input normalisation: {args.norm} ({args.norm_seconds:g} s)", flush=True)
     feats = torch.from_numpy(data["feats"]).float()
     probs = torch.from_numpy(data["probs"]).float()
     order = torch.randperm(len(mel), generator=torch.Generator().manual_seed(args.seed))
@@ -258,6 +346,10 @@ def evaluate(args):
     print(f"student weights: {source.relative_to(ROOT) / 'student.pt'}")
     student.eval()
     data = dict(np.load(CACHE / "validation.npz"))   # read each npz array once
+    norm = config.get("norm", "clip")
+    student_mel = data["mel"] if norm == "clip" else normalised_inputs(
+        np.load(CACHE / "validation_db.npz")["db"], data["mel_frames"], norm, config.get("norm_seconds", 4.0))
+    print(f"student input normalisation: {norm}")
     names = [str(n) for n in data["names"]]
     usable = dict(zip(names, data["usable"].tolist()))
     durations = dict(zip(names, data["durations"].tolist()))
@@ -267,7 +359,8 @@ def evaluate(args):
     with torch.inference_mode():
         for k, n in enumerate(names):
             m = torch.from_numpy(data["mel"][k, :, :data["mel_frames"][k]]).float()[None]
-            for who, f in (("teacher", teacher_features(model, m)), ("student", student(cnn_input(m)))):
+            ms = torch.from_numpy(student_mel[k, :, :data["mel_frames"][k]]).float()[None]
+            for who, f in (("teacher", teacher_features(model, m)), ("student", student(cnn_input(ms)))):
                 outputs[who][n] = head(model, f)[0].numpy()
                 feats[who].append(f[0].half().numpy())
     frames = np.array([len(f) for f in feats["teacher"]])
@@ -302,9 +395,13 @@ def main():
                    help="weight of BCE between frozen-BiGRU outputs on student vs teacher features")
     t.add_argument("--device", default="auto", help="auto | mps | cpu")
     t.add_argument("--seed", type=int, default=2026)
+    t.add_argument("--norm", choices=["clip", "fixed", "window", "ema"], default="clip",
+                   help="student input normalisation (clip = whole-clip min-max, not online)")
+    t.add_argument("--norm-seconds", type=float, default=4.0, help="window length / EMA time constant")
+    d = sub.add_parser("cache-db"); d.add_argument("--batch", type=int, default=16)
     e = sub.add_parser("eval"); e.add_argument("--run", required=True)
     args = parser.parse_args()
-    {"cache": cache, "train": train, "eval": evaluate}[args.command](args)
+    {"cache": cache, "cache-db": cache_db, "train": train, "eval": evaluate}[args.command](args)
 
 
 if __name__ == "__main__":

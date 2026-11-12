@@ -32,6 +32,7 @@ buffer and a communication budget? Adaptive selection is a hypothesis to test.
 | Nano PCM ring buffer | Done in native_sim: 13-case self-test on a synthetic signal ([firmware](firmware/README.md)) |
 | Request protocol, laptop link, real-audio replay | Next |
 | Compact MCU encoder (distilled DS-CNN) | Prototype, offline: 98.8% of reference event F1 at 1/7 the MACs ([report](docs/distillation_refine.md)) |
+| Online input normalisation | Causal 2 s min-max: 0.370 vs 0.390 event F1 with whole-clip scaling ([report](docs/distillation_refine.md#online-feasible-input-normalisation)) |
 | Encoder in int8 TFLite Micro | Runs in Zephyr native_sim: 25.5 KB model, 48 KB arena, F1 unchanged; Nano build not yet measured |
 | PCM refinement (REFINE) | Prototype, offline simulation on validation ([report](docs/distillation_refine.md)) |
 | Controller (early report / wait / REFINE) | Prototype, simulated online on validation ([report](docs/controller.md)) |
@@ -165,8 +166,9 @@ radio performance or energy.
    wraparound and slow-transfer cases pass in native_sim). Next: native_sim to
    Python link, request protocol and real-audio replay.
 3. **Compact encoder and refinement.** Offline prototypes and int8 TFLM probe done
-   ([report](docs/distillation_refine.md)). Next: online-feasible normalisation,
-   Nano FLASH/RAM report and on-device latency.
+   ([report](docs/distillation_refine.md)); online-feasible input normalisation chosen
+   (causal 2 s min-max). Next: rerun the controller with it, Nano FLASH/RAM report,
+   the mel frontend in C and on-device latency.
 4. **Controller.** Policy A simulated on the development set ([report](docs/controller.md)).
    Next: bootstrap confidence intervals, shorter deadlines, early-report threshold
    sweep and flip rate, measured BLE round trip; then one run on the public set.

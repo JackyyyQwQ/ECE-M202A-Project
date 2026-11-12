@@ -47,10 +47,10 @@ the old feature scaling and were removed.
 
 | Script | Purpose |
 |---|---|
-| `distill_cnn.py cache\|train\|eval` | Distil a DS-CNN student from the 2023 reference CNN (BiGRU frozen); `eval` scores it on validation and saves features. Committed students: `models/distill/<run>/` |
+| `distill_cnn.py cache\|cache-db\|train\|eval` | Distil a DS-CNN student from the 2023 reference CNN (BiGRU frozen); `--norm clip\|window\|fixed\|ema` sets the student's input normalisation (`cache-db` first); `eval` scores it on validation and saves features. Committed students: `models/distill/<run>/` |
 | `refine_sim.py --run <run>` | Fetch PCM chunks around uncertain frames under an uplink budget, recompute them with the reference CNN; uncertainty vs random vs oracle |
 | `export_tflite.py --run <run>` | int8 TFLite export (per-frame 40 mel-frame window), F1 of float/int8 on validation, C header for `firmware/tflm_probe` |
-| `controller_sim.py --run <run>` | Online controller simulation: early report, waiting and REFINE under a deadline and token-bucket budget |
+| `controller_sim.py --run <run>` | Online controller simulation: early report, waiting and REFINE under a deadline and token-bucket budget; `--refine-norm past\|clip` sets the teacher's input scaling on REFINE chunks; `--lookaheads` runs a pure-waiting sweep |
 
 Results and commands: [distillation, int8 and REFINE](../docs/distillation_refine.md),
 [controller](../docs/controller.md).

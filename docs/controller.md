@@ -125,8 +125,11 @@ Results: `results/controller/ds_w025_lookahead_{student,teacher,student-causal,t
 
 ## Limitations
 
-- Offline replay; whole-clip [0, 1] normalisation; float student features (int8
-  per-frame features differ by less than noise).
+- Offline replay; the results above use the whole-clip-normalised student
+  (`ds_w025`) and whole-clip teacher scaling on REFINE chunks. `controller_sim.py` now
+  defaults to past-10 s teacher scaling (`--refine-norm past`); rerunning with the
+  online-feasible student (`--run ds_w025_window2`) is the next step. Float student
+  features (int8 per-frame features differ by less than noise).
 - R fixed at 0.32 s; no packet loss or jitter; Nano compute and feature transfer time
   not included in the delays.
 - Thresholds were set by hand and evaluated on the development set; the public set is

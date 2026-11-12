@@ -37,7 +37,9 @@ L = 0 matches the earlier lookahead sweep's L = 0 (delay L + 64 ms).
 Sanity row: "student, whole clip" must equal the student's full-clip score (0.390 event
 micro F1 for ds_w025); --sanity-refine adds "refine everything", which should approach
 the teacher (0.422). Optimistic as before: whole-clip [0, 1]
-normalisation, no packet loss, fixed R. Writes output/controller/<run>/summary.json.
+normalisation for the TEACHER on REFINE chunks only with --refine-norm clip (default
+past: last 10 s of per-frame min/max sent by the Nano), no packet loss, fixed R.
+Writes output/controller/<run>/summary.json.
 """
 
 import argparse
@@ -91,6 +93,22 @@ def load_student(run):
     student = Student(width)
     student.load_state_dict(torch.load(source / "student.pt", map_location="cpu", weights_only=True))
     return student.eval()
+
+
+def teacher_chunk_input(c, a, b, n, cfg):
+    """Mel the laptop feeds the reference CNN for REFINE chunk [a, b) requested at tick n.
+
+    clip: whole-clip min-max (what the teacher was trained on; needs the future).
+    past: the Nano sends each mel frame's min and max over bands with its features
+    (2 bytes per mel frame, ~0.125 kB/s); the laptop scales the fetched dB chunk by the
+    min/max over the last `refine_norm_s` seconds of frames whose features have arrived."""
+    if cfg["refine_norm"] == "clip":
+        return c["mel"][:, 4 * a:4 * b]
+    end = min(c["db"].shape[1], 4 * max(1, n - AVAIL + 1))
+    start = max(0, end - int(round(cfg["refine_norm_s"] / (FRAME_S / 4))))
+    seen = c["db"][:, start:end]
+    lo, hi = float(seen.min()), float(seen.max())
+    return (c["db"][:, 4 * a:4 * b] - lo) / (hi - lo + 1e-8)
 
 
 def chunk_features(model, mel, a, b):
@@ -178,7 +196,8 @@ def simulate_clip(c, model, cfg, bucket, offset):
             edges = np.diff(np.r_[0, fetched.astype(int), 0])
             runs = [(a, b) for a, b in zip(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))
                     if any(a <= t < b for t in chosen)]
-            pending.append((n + Rk, [(a, b, chunk_features(model, c["mel"], a, b)) for a, b in runs]))
+            pending.append((n + Rk, [(a, b, chunk_features(model, teacher_chunk_input(c, a, b, n, cfg), 0, b - a))
+                                     for a, b in runs]))
 
         # 2. report frames in order
         while head < k:
@@ -213,6 +232,10 @@ def main():
     parser.add_argument("--window", type=float, default=0.25, help="REFINE chunk half-length, s")
     parser.add_argument("--rtt", type=float, default=0.3, help="assumed REFINE round trip R, s")
     parser.add_argument("--bucket-s", type=float, default=10.0, help="token bucket depth, s of budget")
+    parser.add_argument("--refine-norm", choices=["clip", "past"], default="past",
+                        help="teacher input scaling for REFINE: clip = whole clip (offline upper bound), "
+                             "past = min/max of the last --refine-norm-seconds sent by the Nano")
+    parser.add_argument("--refine-norm-seconds", type=float, default=10.0)
     parser.add_argument("--limit", type=int, help="first N recordings only (quick check)")
     parser.add_argument("--sanity-refine", action="store_true",
                         help="also run 'refine everything' (slow: one BiGRU rerun per frame)")
@@ -243,6 +266,7 @@ def main():
             student[i] = causal_features(cnn, mel, len(student[i]), CAUSAL_HISTORY[base])
     decide = POSTPROCESSING["hysteresis 0.5/0.3"]
 
+    db_all = np.load(CACHE / "validation_db.npz")["db"] if args.refine_norm == "past" else cache["mel"]
     print(f"{len(names)} validation recordings: building BiGRU prefix tables ...", flush=True)
     start = time.time()
     clips = []
@@ -254,7 +278,8 @@ def main():
             diff = float(np.abs(table[T - 1].astype(np.float32) - student_scores[0]).max())
             assert diff < 2e-3, f"prefix table differs from the whole-clip BiGRU by {diff}"
         clips.append({"name": n, "T": T, "student": f, "table": table,
-                      "mel": cache["mel"][i, :, :cache["mel_frames"][i]]})
+                      "mel": cache["mel"][i, :, :cache["mel_frames"][i]],
+                      "db": db_all[i, :, :cache["mel_frames"][i]].astype(np.float32)})
     print(f"  done in {time.time() - start:.0f} s", flush=True)
 
     W = int(round(args.window / FRAME_S))
@@ -262,6 +287,7 @@ def main():
 
     def run(label, D, budget, m_report, m_refine):
         cfg = {"Dk": int(round(D / FRAME_S)), "Rk": math.ceil(args.rtt / FRAME_S - 1e-9), "W": W,
+               "refine_norm": args.refine_norm, "refine_norm_s": args.refine_norm_seconds,
                "m_report": m_report, "m_refine": m_refine}
         capacity = max(budget * 1000 * args.bucket_s, (2 * W + 1) * PCM_BYTES_PER_FRAME) if budget else 0
         bucket = Bucket(budget, capacity)
@@ -322,7 +348,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     (out / "summary.json").write_text(json.dumps({
         "run": args.run, "recordings": len(clips), "window_s": args.window, "rtt_s": args.rtt,
-        "bucket_s": args.bucket_s, "feature_avail_frames": AVAIL, "postprocessing": "hysteresis 0.5/0.3",
+        "bucket_s": args.bucket_s, "refine_norm": args.refine_norm, "refine_norm_s": args.refine_norm_seconds, "feature_avail_frames": AVAIL, "postprocessing": "hysteresis 0.5/0.3",
         "assumptions": "Offline replay of the validation set; whole-clip [0,1] normalisation; fixed REFINE "
                        "round trip; no packet loss; frames reported in order and never revised.",
         "rows": rows}, indent=2, default=float) + "\n")

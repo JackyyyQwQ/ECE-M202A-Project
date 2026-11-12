@@ -7,7 +7,7 @@ student's 36-frame receptive field, and keeps one 64 ms output frame (TARGET = 4
 i.e. mel frames 16..19; 20 future mel frames = 0.32 s look-ahead). Windows start on a
 multiple of 4 mel frames, so interior frames equal the whole-clip student exactly.
 
-Event F1 on the validation set (whole-clip [0, 1] normalisation as before; frozen
+Event F1 on the validation set (the student's own input normalisation from train.json; frozen
 official BiGRU; hysteresis 0.5/0.3), three ways:
   float, whole clip      the earlier `distill_cnn.py eval` setting
   float, per frame       the same weights run window by window (should match)
@@ -25,7 +25,8 @@ import numpy as np
 import tensorflow as tf
 import torch
 
-from distill_cnn import CACHE, OUT, RELEASED, ROOT, Student, annotations, cnn_input, head, load_teacher
+from distill_cnn import (CACHE, OUT, RELEASED, ROOT, Student, annotations, cnn_input, head, load_teacher,
+                         normalise, normalised_inputs)
 from lookahead_sweep import POSTPROCESSING, score
 
 WINDOW = 40
@@ -35,10 +36,10 @@ FIRMWARE = ROOT / "firmware/tflm_probe/src"
 
 def load_student(run):
     source = OUT / run if (OUT / run / "student.pt").exists() else RELEASED / run
-    width = json.loads((source / "train.json").read_text())["args"]["width"]
-    student = Student(width)
+    config = json.loads((source / "train.json").read_text())["args"]
+    student = Student(config["width"])
     student.load_state_dict(torch.load(source / "student.pt", map_location="cpu", weights_only=True))
-    return student.eval(), width
+    return student.eval(), config
 
 
 def fold(conv, bn):
@@ -83,11 +84,16 @@ def windows(mel, frames):
     return np.stack([pad[:, 4 * t:4 * t + WINDOW].T for t in range(frames)])[..., None]
 
 
-def representative(count, seed):
-    synth = np.load(CACHE / "synthetic.npz")["mel"]
+def representative(count, seed, norm="clip", seconds=4.0):
+    """Calibration windows from the synthetic training audio, scaled as the student's input."""
+    clip_norm = norm == "clip"
+    synth = np.load(CACHE / ("synthetic.npz" if clip_norm else "synthetic_db.npz"))["mel" if clip_norm else "db"]
+    stats = dict(np.load(CACHE / "db_stats.npz")) if norm == "ema" else None
     rng = np.random.default_rng(seed)
     for _ in range(count):
         clip = synth[rng.integers(len(synth))].astype(np.float32)
+        if not clip_norm:
+            clip = normalise(clip, norm, seconds, stats)
         start = 4 * rng.integers(0, (clip.shape[1] - WINDOW) // 4)
         yield [clip[:, start:start + WINDOW].T[None, ..., None]]
 
@@ -108,11 +114,13 @@ def main():
     parser.add_argument("--calibration", type=int, default=500, help="representative windows")
     parser.add_argument("--seed", type=int, default=2026)
     args = parser.parse_args()
-    student, width = load_student(args.run)
+    student, config = load_student(args.run)
+    width, norm, norm_s = config["width"], config.get("norm", "clip"), config.get("norm_seconds", 4.0)
+    print(f"student input normalisation: {norm}" + ("" if norm == "clip" else f" ({norm_s:g} s)"))
     forward = tf_forward(student)
 
     # 1. float TensorFlow graph == PyTorch student on the same window
-    probe = next(representative(1, args.seed))[0]
+    probe = next(representative(1, args.seed, norm, norm_s))[0]
     with torch.inference_mode():
         ref = student(torch.from_numpy(probe.transpose(0, 3, 1, 2)).float()).numpy()  # [1, 10, 128]
     diff = float(np.abs(forward(tf.constant(probe)).numpy()[:, :, 0, :] - ref).max())
@@ -123,7 +131,7 @@ def main():
     fn = tf.function(forward, input_signature=[tf.TensorSpec([1, WINDOW, 128, 1], tf.float32)])
     converter = tf.lite.TFLiteConverter.from_concrete_functions([fn.get_concrete_function()], fn)
     converter.optimizations = [tf.lite.Optimize.DEFAULT]
-    converter.representative_dataset = lambda: representative(args.calibration, args.seed)
+    converter.representative_dataset = lambda: representative(args.calibration, args.seed, norm, norm_s)
     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
     converter.inference_input_type = tf.int8
     converter.inference_output_type = tf.int8
@@ -139,6 +147,8 @@ def main():
 
     # 3. Event F1 on validation: whole-clip float, per-frame float, per-frame int8
     data = dict(np.load(CACHE / "validation.npz"))
+    student_mel = data["mel"] if norm == "clip" else normalised_inputs(
+        np.load(CACHE / "validation_db.npz")["db"], data["mel_frames"], norm, norm_s)
     names = [str(n) for n in data["names"]]
     usable = dict(zip(names, data["usable"].tolist()))
     durations = dict(zip(names, data["durations"].tolist()))
@@ -147,7 +157,7 @@ def main():
     outputs = {"float, whole clip": {}, "float, per frame": {}, "int8 TFLite, per frame": {}}
     start = time.time()
     for k, n in enumerate(names):
-        mel = data["mel"][k, :, :data["mel_frames"][k]].astype(np.float32)
+        mel = student_mel[k, :, :data["mel_frames"][k]].astype(np.float32)
         with torch.inference_mode():
             whole = student(cnn_input(torch.from_numpy(mel)[None]))                     # [1, frames, 128]
             frames = whole.shape[1]
@@ -171,7 +181,7 @@ def main():
     rule = "hysteresis 0.5/0.3"
     results = {key: score(names, o, events, durations, usable, POSTPROCESSING[rule]) for key, o in outputs.items()}
     (run / "tflite_eval.json").write_text(json.dumps({
-        "run": args.run, "width": width, "window_mel_frames": WINDOW, "target_frame": TARGET,
+        "run": args.run, "width": width, "norm": norm, "norm_seconds": norm_s, "window_mel_frames": WINDOW, "target_frame": TARGET,
         "model_bytes": len(blob), "ops": ops, "postprocessing": rule, "recordings": len(names),
         "input_quantization": interp.get_input_details()[0]["quantization"],
         "output_quantization": interp.get_output_details()[0]["quantization"],

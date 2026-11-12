@@ -1,0 +1,125 @@
+{
+  "recordings": 916,
+  "results": {
+    "teacher | threshold 0.5": {
+      "frame_micro": {
+        "tp": 88673,
+        "fp": 25641,
+        "fn": 48545,
+        "precision": 0.77569676505065,
+        "recall": 0.6462198836887288,
+        "f1": 0.7050633716584769
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3368,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.7615344418052283,
+      "event_macro_f1": 0.3651769574258957,
+      "event_micro_f1": 0.41222733343226,
+      "onset_macro_f1": 0.4817331762091303,
+      "onset_micro_f1": 0.5552752633921948,
+      "offset_macro_f1": 0.49681172448748506,
+      "offset_micro_f1": 0.5520106840777563
+    },
+    "teacher | hysteresis 0.5/0.3": {
+      "frame_micro": {
+        "tp": 92038,
+        "fp": 30208,
+        "fn": 45180,
+        "precision": 0.7528917101582056,
+        "recall": 0.6707429054497224,
+        "f1": 0.7094471680078932
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2954,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.144774542992554,
+      "event_macro_f1": 0.4051968528811593,
+      "event_micro_f1": 0.42181818181818176,
+      "onset_macro_f1": 0.5129242010465651,
+      "onset_micro_f1": 0.5650592885375494,
+      "offset_macro_f1": 0.5410454648984593,
+      "offset_micro_f1": 0.5647430830039526
+    },
+    "teacher | causal mean (3 frames)": {
+      "frame_micro": {
+        "tp": 88564,
+        "fp": 25759,
+        "fn": 48654,
+        "precision": 0.7746822599127035,
+        "recall": 0.645425527263187,
+        "f1": 0.704171486954413
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3123,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.8990714056996496,
+      "event_macro_f1": 0.3750089039586561,
+      "event_micro_f1": 0.4173082845703727,
+      "onset_macro_f1": 0.4839628462442748,
+      "onset_micro_f1": 0.5632891900215583,
+      "offset_macro_f1": 0.5074335873770408,
+      "offset_micro_f1": 0.5515860794579611
+    },
+    "student | threshold 0.5": {
+      "frame_micro": {
+        "tp": 81690,
+        "fp": 39840,
+        "fn": 55528,
+        "precision": 0.6721797087138978,
+        "recall": 0.5953300587386494,
+        "f1": 0.6314251704361
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3399,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 1.8563441481721694,
+      "event_macro_f1": 0.281024854651016,
+      "event_micro_f1": 0.3314623338257016,
+      "onset_macro_f1": 0.3876477844473478,
+      "onset_micro_f1": 0.4771048744460857,
+      "offset_macro_f1": 0.4229226972578607,
+      "offset_micro_f1": 0.48242245199409156
+    },
+    "student | hysteresis 0.5/0.3": {
+      "frame_micro": {
+        "tp": 85330,
+        "fp": 47996,
+        "fn": 51888,
+        "precision": 0.6400102005610309,
+        "recall": 0.6218571907475695,
+        "f1": 0.6308031225974333
+      },
+      "skipped_targets": 38,
+      "predicted_events": 2838,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.433449527708668,
+      "event_macro_f1": 0.3104988077601924,
+      "event_micro_f1": 0.3256563053631825,
+      "onset_macro_f1": 0.4140281358682147,
+      "onset_micro_f1": 0.4834917055886616,
+      "offset_macro_f1": 0.4492853165487962,
+      "offset_micro_f1": 0.4760831051699147
+    },
+    "student | causal mean (3 frames)": {
+      "frame_micro": {
+        "tp": 81505,
+        "fp": 39946,
+        "fn": 55713,
+        "precision": 0.6710936921062816,
+        "recall": 0.593981839117317,
+        "f1": 0.6301876142869846
+      },
+      "skipped_targets": 38,
+      "predicted_events": 3102,
+      "reference_events": 3371,
+      "mean_predicted_event_s": 2.031010238438814,
+      "event_macro_f1": 0.2869572312911909,
+      "event_micro_f1": 0.32813224161903287,
+      "onset_macro_f1": 0.3888002343240725,
+      "onset_micro_f1": 0.4826201143210258,
+      "offset_macro_f1": 0.4267693968090396,
+      "offset_micro_f1": 0.4711880117410783
+    }
+  }
+}

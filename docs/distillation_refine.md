@@ -18,6 +18,10 @@ November 11, 2026. **Preliminary, offline simulation on the development
 - The small student in int8, run per frame, keeps its event F1 (0.392 vs 0.393
   float) and runs in TensorFlow Lite Micro under Zephyr: 25.5 KB model, 48 KB
   tensor arena (measured in native_sim).
+- **Online-feasible input normalisation.** The reference model scales each clip by its
+  own min/max, which needs the future. Retrained with a causal min-max over the last
+  2 s, the small student reaches 0.370 / 0.335 event F1 (micro / macro) vs 0.390 / 0.339
+  with whole-clip scaling; this `ds_w025_window2` student is the online default.
 - Online use under a deadline is covered by the [controller simulation](controller.md).
 
 ## Setup
@@ -117,10 +121,51 @@ build's FLASH/RAM report (`bash firmware/run probe-nano ds_w025 64`) and on-devi
 latency. Python TFLite and TFLM may differ by +-1 LSB on some outputs; a golden-vector
 test is not yet in place.
 
+## Online-feasible input normalisation
+
+The reference recipe scales each clip's log-mel (dB, clamped to [-50, 80]) by that
+clip's min and max, which an online system cannot know. The teacher keeps its scaling
+(its features are the targets); only the student's input changes, so the student is
+retrained with each option (`distill_cnn.py cache-db`, then `train --norm ...`).
+Width 0.25, 916 validation clips, hysteresis:
+
+| Student input normalisation | Online | Frame F1 | Event F1 micro | Event F1 macro |
+|---|---|---:|---:|---:|
+| clip: whole-clip min-max (`ds_w025`) | no | 0.632 | 0.390 | 0.339 |
+| **window 2 s: min-max over the last 2 s (`ds_w025_window2`)** | yes | **0.635** | **0.370** | **0.335** |
+| window 4 s | yes | 0.631 | 0.372 | 0.330 |
+| window 8 s | yes | 0.618 | 0.372 | 0.307 |
+| fixed: (dB + 50) / 130 | yes | 0.631 | 0.326 | 0.311 |
+| ema 4 s: per-band running mean / std | yes | 0.571 | 0.340 | 0.279 |
+
+- **Window 2 s is the choice**: it costs 0.020 micro / 0.004 macro against whole-clip
+  scaling. 2 s and 4 s are within noise; 8 s loses macro F1, presumably because a loud
+  sound keeps compressing quieter ones for longer.
+- **Fixed** keeps frame F1 but loses event F1: the teacher's targets depend on each
+  clip's level, which the student must then guess.
+- **EMA** per band subtracts each band's running mean, fading long stationary events.
+- **Cost on the Nano**: only each mel frame's min and max over bands are kept for the
+  window (125 frames x 2 values, about 1 KB); a monotonic queue gives the sliding
+  min/max in constant time per frame.
+- Each validation clip starts with an empty window; a continuous stream would start
+  with a full one, so these numbers are, if anything, conservative.
+
+**Teacher input for REFINE.** The laptop only has the fetched PCM chunk. The Nano can
+send each mel frame's min and max with its features (2 bytes per mel frame, about
+0.125 kB/s), and the laptop scales the chunk by the min/max of the last 10 s it has
+received (the teacher's training clips are 10 s). This is the default in the
+[controller simulation](controller.md) (`--refine-norm past`); `--refine-norm clip`
+keeps the whole-clip upper bound. The offline REFINE study above still uses whole-clip
+scaling.
+
+`export_tflite.py` reads the student's normalisation from `train.json` for
+calibration and evaluation.
+
 ## Limitations
 
-- **Normalisation:** student, teacher and REFINE chunks use whole-clip min/max
-  scaling, which an online system cannot know. Optimistic.
+- **Normalisation:** the offline REFINE study uses whole-clip min/max scaling for
+  the student and teacher, which an online system cannot know (optimistic). The
+  online-feasible student and REFINE scaling are described above.
 - **Offline:** the BiGRU sees the whole clip; no deadline, lookahead, buffer expiry,
   round-trip delay or request overhead. Online, a +-w chunk around frame t is past
   audio once the system has waited L >= w, and still buffered if L + w <= 2 s.
@@ -144,14 +189,18 @@ python scripts/distill_cnn.py train --run ds_w025 --width 0.25   # optional: ret
 python scripts/distill_cnn.py eval --run ds_w025                 # uses the committed weights if not retrained
 python scripts/refine_sim.py --run ds_w025                       # about 9 min
 python scripts/export_tflite.py --run ds_w025                    # int8 model, three F1s, C header
+python scripts/distill_cnn.py cache-db                           # dB log-mel, for other normalisations
+python scripts/distill_cnn.py eval --run ds_w025_window2         # online-feasible student (committed)
 bash firmware/run probe ds_w025                                  # TFLM size probe in native_sim
 ```
 
 Committed weights (SHA-256): `ds_mse` 14acdd54ef41c94effd18cc085c964de52ff9eaca753b3e3fa1561609308f610;
-`ds_w025` e94edca76a2b9fed4308c5701f0255eca8524a06344f84e6a8c3f3acd97734cf.
+`ds_w025` e94edca76a2b9fed4308c5701f0255eca8524a06344f84e6a8c3f3acd97734cf;
+`ds_w025_window2` b0a7c14317b79d1e04afc12f2cbd8e13e87a9c8f04331b3b9519aa9c86273ba0.
 
 ## Next
 
-Train width 0.5; train the student with an online-feasible normalisation; Nano
-FLASH/RAM report and a golden-vector check; measure BLE throughput. REFINE together
+Rerun the controller and the int8 export with `ds_w025_window2`; measure REFINE with
+past-10 s teacher scaling; Nano FLASH/RAM report and a golden-vector check; the mel
+frontend and window normalisation in C on the Nano; measure BLE throughput. REFINE together
 with lookahead and a deadline is now simulated in the [controller](controller.md).
