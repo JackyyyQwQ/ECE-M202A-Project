@@ -150,8 +150,8 @@ def normalise(db, kind, seconds=4.0, stats=None):
     if kind == "window":                                 # min/max over the last `seconds`, all bands
         w = max(1, int(round(seconds / MEL_FRAME_S)))
         lo_t, hi_t = db.min(axis=0), db.max(axis=0)
-        lo = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, np.inf), lo_t], w).min(axis=1)
-        hi = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, -np.inf), hi_t], w).max(axis=1)
+        lo = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, np.inf, dtype=db.dtype), lo_t], w).min(axis=1)
+        hi = np.lib.stride_tricks.sliding_window_view(np.r_[np.full(w - 1, -np.inf, dtype=db.dtype), hi_t], w).max(axis=1)
         return (db - lo) / (hi - lo + 1e-8)
     if kind == "ema":                                    # per-band running mean/variance
         from scipy.signal import lfilter

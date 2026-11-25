@@ -198,9 +198,14 @@ Committed weights (SHA-256): `ds_mse` 14acdd54ef41c94effd18cc085c964de52ff9eaca7
 `ds_w025` e94edca76a2b9fed4308c5701f0255eca8524a06344f84e6a8c3f3acd97734cf;
 `ds_w025_window2` b0a7c14317b79d1e04afc12f2cbd8e13e87a9c8f04331b3b9519aa9c86273ba0.
 
+The [2 s window int8 encoder](../models/distill/ds_w025_window2/student_int8.tflite) is 25,504 bytes.
+On 916 validation recordings, per-frame event micro F1 was 0.3650 in float
+and 0.3612 in int8 with the frozen BiGRU.
+[Validation results](../results/distill/ds_w025_window2_tflite_eval.json).
+Use `bash firmware/run probe ds_w025_window2 64` to select its firmware header.
+
 ## Next
 
-Rerun the controller and the int8 export with `ds_w025_window2`; measure REFINE with
-past-10 s teacher scaling; Nano FLASH/RAM report and a golden-vector check; the mel
+Next steps include a Nano FLASH/RAM report and a golden-vector check; the mel
 frontend and window normalisation in C on the Nano; measure BLE throughput. REFINE together
 with lookahead and a deadline is now simulated in the [controller](controller.md).
