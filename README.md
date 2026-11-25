@@ -167,7 +167,7 @@ radio performance or energy.
    Python link, request protocol and real-audio replay.
 3. **Compact encoder and refinement.** Offline prototypes and int8 TFLM probe done
    ([report](docs/distillation_refine.md)); online-feasible input normalisation chosen
-   (causal 2 s min-max). Next: rerun the controller with it, Nano FLASH/RAM report,
+   (causal 2 s min-max). Controller replay completed on 916 validation clips. Next: Nano FLASH/RAM report,
    the mel frontend in C and on-device latency.
 4. **Controller.** Policy A simulated on the development set ([report](docs/controller.md)).
    Next: bootstrap confidence intervals, shorter deadlines, early-report threshold

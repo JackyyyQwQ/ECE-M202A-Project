@@ -123,12 +123,22 @@ features at the same distance).
 
 Results: `results/controller/ds_w025_lookahead_{student,teacher,student-causal,teacher-causal}.json`.
 
+## Online-feasible normalisation
+
+The saved 916-clip replay uses the student trained with 2 s window scaling and
+past-10 s scaling for REFINE. At the nominal 1 s deadline, early reporting with
+no PCM scored 0.2948 event micro F1 at 0.642 s mean delay. Allowing 4 kB/s
+extra PCM raised this to 0.3144 at 0.640 s (5.88 kB/s total simulated uplink).
+Fixed waiting with that same budget scored 0.3066 at 1.003 s. The round trip is
+assumed and the mean delay alone does not establish deadline compliance.
+[All deadlines and budgets](../results/controller/ds_w025_window2_past_summary.json).
+
 ## Limitations
 
 - Offline replay; the results above use the whole-clip-normalised student
   (`ds_w025`) and whole-clip teacher scaling on REFINE chunks. `controller_sim.py` now
-  defaults to past-10 s teacher scaling (`--refine-norm past`); rerunning with the
-  online-feasible student (`--run ds_w025_window2`) is the next step. Float student
+  defaults to past-10 s teacher scaling (`--refine-norm past`); the replay above uses
+  the online-feasible student (`--run ds_w025_window2`). Float student
   features (int8 per-frame features differ by less than noise).
 - R fixed at 0.32 s; no packet loss or jitter; Nano compute and feature transfer time
   not included in the delays.
